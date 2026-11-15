@@ -99,7 +99,7 @@ else document.getElementById('apps').textContent='(only visible inside the app)'
   const PKGS=['uk.co.bbc.iplayer','air.ITVMobilePlayer','com.channel4.ondemand','com.mobileiq.demand5','com.bskyb.nowtv.beta','com.amazon.firebat','com.disney.disneyplus','com.netflix.ninja','com.amazon.firetv.youtube','com.tubitv.ott','com.cbs.ca','com.apple.atve.amazon.appletv'];
   const btn=document.getElementById('scanBtn'), out=document.getElementById('scanRes');
   btn.onclick=async()=>{
-    if(!window.GranaryApp||typeof GranaryApp.manifest!=='function'){out.innerHTML='<span class="no">Needs Granary TV app 1.4 – reinstall from Downloader.</span>';return}
+    if(!window.GranaryApp||typeof GranaryApp.manifest!=='function'){out.innerHTML='<span class="no">Needs Granary TV app 1.5 – reinstall from Downloader.</span>';return}
     out.textContent='Scanning…';
     try{
       const db=window.supabase.createClient('https://tbnjyytzoyvdymdpimko.supabase.co','sb_publishable_OfPXxDIZPgew-S5XD51l9A__uChIZLC',{auth:{persistSession:true,autoRefreshToken:true}});

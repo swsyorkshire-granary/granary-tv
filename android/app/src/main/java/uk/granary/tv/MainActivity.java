@@ -223,7 +223,7 @@ public class MainActivity extends Activity {
             } catch (Exception e) { return "[]"; }
         }
         /** Deep Link Lab: read another app's manifest and list every intent filter that has links (data). */
-        @JavascriptInterface public String manifest(String pkg) {
+        public String manifestViaAssets(String pkg) {
             try {
                 JSONObject out = new JSONObject();
                 android.content.pm.PackageInfo pi = getPackageManager().getPackageInfo(pkg, 0);
@@ -260,6 +260,26 @@ public class MainActivity extends Activity {
                 return out.toString();
             } catch (Throwable e) {
                 try { return new JSONObject().put("package", pkg).put("error", e.getClass().getSimpleName() + ": " + e.getMessage()).toString(); } catch (Exception ignored) { return "{}"; }
+            }
+        }
+        /** Deep Link Lab: read the app's installed APK file(s) directly and list intent filters with link data. */
+        @JavascriptInterface public String manifest(String pkg) {
+            try {
+                android.content.pm.ApplicationInfo ai = getPackageManager().getApplicationInfo(pkg, 0);
+                android.content.pm.PackageInfo pi = getPackageManager().getPackageInfo(pkg, 0);
+                JSONObject out = new JSONObject().put("package", pkg).put("version", pi.versionName).put("source", "apk");
+                JSONObject base = Axml.scanApk(ai.sourceDir);
+                out.put("manifestPackage", base.optString("manifestPackage")).put("filters", base.get("filters"));
+                JSONArray splits = new JSONArray();
+                if (ai.splitSourceDirs != null) for (String sp : ai.splitSourceDirs) {
+                    try { JSONObject r = Axml.scanApk(sp); if (r.getJSONArray("filters").length() > 0) splits.put(r.put("apk", sp)); }
+                    catch (Exception ex) { splits.put(new JSONObject().put("apk", sp).put("error", ex.getMessage())); }
+                }
+                out.put("splits", splits);
+                return out.toString();
+            } catch (Throwable e) {
+                String fallback = manifestViaAssets(pkg);
+                try { return new JSONObject(fallback).put("apkError", e.getClass().getSimpleName() + ": " + e.getMessage()).toString(); } catch (Exception ignored) { return fallback; }
             }
         }
         /** Deep Link Lab: which activities say they can open this link */
