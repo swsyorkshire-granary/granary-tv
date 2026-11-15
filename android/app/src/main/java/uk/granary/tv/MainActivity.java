@@ -189,6 +189,7 @@ public class MainActivity extends Activity {
             for (JSONObject r : rewrites) {
                 String h = r.optString("host");
                 if (h.isEmpty() || !(host0.equals(h) || host0.endsWith("." + h))) continue;
+                if (u.getScheme() == null || !u.getScheme().startsWith("http")) continue; // never rewrite app links like channel4://
                 String path = u.getEncodedPath() == null ? "" : u.getEncodedPath().replaceFirst("^/", "");
                 String q = u.getEncodedQuery() == null ? "" : "?" + u.getEncodedQuery();
                 String target = r.optString("to").replace("{path}", path).replace("{query}", q).replace("{title}", title == null ? "" : Uri.encode(title));

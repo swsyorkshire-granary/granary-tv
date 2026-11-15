@@ -9,7 +9,7 @@ let fail = 0; const check = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m)
 const b = await chromium.launch({ executablePath: '/usr/bin/google-chrome' });
 for (const inApp of [false, true]) {
   const page = await (await b.newContext({ viewport: { width: 1920, height: 1080 } })).newPage();
-  if (inApp) await page.addInitScript(() => { window.GranaryApp = { isApp: () => true, openWithTitle() {}, launch() { return 'started' }, launchIntentUri(u) { window.__launched = u; return 'started'; } }; });
+  if (inApp) await page.addInitScript(() => { window.GranaryApp = { isApp: () => true, openWithTitle() {}, launch(u, p) { window.__launched = u + '|' + p; return 'started' }, launchIntentUri(u) { window.__launched = u; return 'started'; } }; });
   await page.route('https://cdn.jsdelivr.net/**', r => r.fulfill({ contentType: 'text/javascript', body: stub }));
   await page.route('https://api.tvmaze.com/**', r => r.fulfill({ contentType: 'application/json', body: '[]' }));
   await page.route('https://www.ontvnow.co.uk/**', r => { const u = new URL(r.request().url()); if (u.pathname.endsWith('/channels')) return r.fulfill({ contentType: 'application/json', body: JSON.stringify({ data: [{ id: 3, name: 'BBC One Yorkshire HD' }, { id: 12, name: 'Channel 4 North HD' }, { id: 9, name: 'ITV1 Yorkshire HD' }] }) });
@@ -17,6 +17,7 @@ for (const inApp of [false, true]) {
     return r.fulfill({ contentType: 'application/json', body: JSON.stringify({ data: out }) }); });
   await page.goto(base + '/tv.html'); await page.waitForSelector('.program');
   const open = async t => { await page.evaluate(t => [...document.querySelectorAll('.program')].find(e => e.textContent.includes(t)).click(), t); await page.waitForTimeout(200); const h = await page.evaluate(() => { const a = document.querySelector('#modalHelp .watchLive'); return a ? a.getAttribute('href') : null; }); await page.evaluate(() => document.getElementById('close').click()); return h; };
+  if (inApp) { await page.evaluate(() => [...document.querySelectorAll('.program')].find(e => e.textContent.includes('OnNow-12')).click()); await page.waitForTimeout(150); await page.click('#modalHelp .watchLive'); check(await page.evaluate(() => window.__launched || '') === 'channel4://www.channel4.com/now/C4|com.channel4.ondemand', '[app] Channel 4 Watch live goes straight to the Channel 4 app'); await page.evaluate(() => document.getElementById('close').click()); }
   const c4 = await open('OnNow-12'), c4later = await open('Later-12'), bbc = await open('OnNow-3');
   const tag = inApp ? '[app]' : '[browser]';
   const itvNow = await open('OnNow-9');
