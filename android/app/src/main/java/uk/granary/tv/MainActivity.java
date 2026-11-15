@@ -222,6 +222,46 @@ public class MainActivity extends Activity {
                 return out.toString();
             } catch (Exception e) { return "[]"; }
         }
+        /** Deep Link Lab: read another app's manifest and list every intent filter that has links (data). */
+        @JavascriptInterface public String manifest(String pkg) {
+            try {
+                JSONObject out = new JSONObject();
+                android.content.pm.PackageInfo pi = getPackageManager().getPackageInfo(pkg, 0);
+                out.put("package", pkg).put("version", pi.versionName);
+                android.content.Context other = createPackageContext(pkg, 0);
+                android.content.res.XmlResourceParser x = other.getAssets().openXmlResourceParser("AndroidManifest.xml");
+                JSONArray filters = new JSONArray();
+                String activity = null; JSONObject filter = null;
+                for (int ev = x.getEventType(); ev != org.xmlpull.v1.XmlPullParser.END_DOCUMENT; ev = x.next()) {
+                    if (ev == org.xmlpull.v1.XmlPullParser.START_TAG) {
+                        String tag = x.getName();
+                        JSONObject attrs = new JSONObject();
+                        for (int i = 0; i < x.getAttributeCount(); i++) {
+                            String n = x.getAttributeName(i);
+                            int res = x.getAttributeNameResource(i);
+                            if (n == null || n.isEmpty()) {
+                                switch (res) { case 0x01010003: n = "name"; break; case 0x01010026: n = "mimeType"; break; case 0x01010027: n = "scheme"; break;
+                                    case 0x01010028: n = "host"; break; case 0x01010029: n = "port"; break; case 0x0101002a: n = "path"; break;
+                                    case 0x0101002b: n = "pathPrefix"; break; case 0x0101002c: n = "pathPattern"; break; default: n = "0x" + Integer.toHexString(res); }
+                            }
+                            attrs.put(n, x.getAttributeValue(i));
+                        }
+                        if (tag.equals("activity") || tag.equals("activity-alias")) { activity = attrs.optString("name"); }
+                        else if (tag.equals("intent-filter")) { filter = new JSONObject().put("activity", activity).put("actions", new JSONArray()).put("categories", new JSONArray()).put("data", new JSONArray()); }
+                        else if (filter != null && tag.equals("action")) filter.getJSONArray("actions").put(attrs.optString("name"));
+                        else if (filter != null && tag.equals("category")) filter.getJSONArray("categories").put(attrs.optString("name"));
+                        else if (filter != null && tag.equals("data")) filter.getJSONArray("data").put(attrs);
+                    } else if (ev == org.xmlpull.v1.XmlPullParser.END_TAG) {
+                        if (x.getName().equals("intent-filter") && filter != null) { if (filter.getJSONArray("data").length() > 0) filters.put(filter); filter = null; }
+                        else if (x.getName().equals("activity") || x.getName().equals("activity-alias")) activity = null;
+                    }
+                }
+                out.put("filters", filters);
+                return out.toString();
+            } catch (Throwable e) {
+                try { return new JSONObject().put("package", pkg).put("error", e.getClass().getSimpleName() + ": " + e.getMessage()).toString(); } catch (Exception ignored) { return "{}"; }
+            }
+        }
         /** Deep Link Lab: which activities say they can open this link */
         @JavascriptInterface public String resolve(String uri) {
             try {
