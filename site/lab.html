@@ -17,7 +17,7 @@ button:focus{outline:5px solid #ffd37b;outline-offset:3px}
 .warn{background:#3a2e12;color:#ffd37b;padding:12px 16px;border-radius:10px;margin:12px 0}
 a.back{color:#9cd;font-size:20px}
 </style></head><body><main class="wrap">
-<a class="back" href="tv.html">← Back to Granary TV</a>
+<div class="sub" style="float:right">Lab v3</div><a class="back" href="tv.html">← Back to Granary TV</a>
 <h1>Deep Link Lab</h1>
 <div class="sub">Press <b>Try</b> on each numbered line. Watch what the streaming app does, press <b>Back</b> to return here, then try the next. Tell Claude the numbers that landed on the <b>channel</b> or <b>programme</b> (not just the app's home page).</div>
 <div id="notApp" class="warn" style="display:none">Open this page inside the Granary TV app on the Fire Stick (version 1.3 or later). A normal browser can't run these tests.</div>
@@ -146,7 +146,8 @@ else document.getElementById('apps').textContent='(only visible inside the app)'
       const RX='(?i)(deep.?link|amzn_|channel4:|my5:|itv\\.com/|bbc\\.co\\.uk/iplayer|/watch|/programmes|on-demand|simulcast|playback|/episode|brand|programmeId|productionId|episodeId|contentId|launch_?param|\\bquery\\b)';
       if(typeof GranaryApp.strings==='function'){
         // Also any installed guide apps that already launch live channels (e.g. Channel Launcher, TV Launcher)
-        const guideApps=Object.keys(labels).filter(k=>/channel\s*launcher|tv\s*launcher/i.test(labels[k]));
+        await db.from('device_app_scans').insert({package:'(installed apps)',app_label:'Installed apps list',report:labels});
+        const guideApps=Object.keys(labels).filter(k=>(/launcher|channel\s*guide|live\s*tv/i.test(labels[k])||/launcher/i.test(k))&&!/^com\.amazon\./.test(k)&&k!=='uk.granary.tv');
         for(const gp of guideApps){ const m=JSON.parse(GranaryApp.manifest(gp)||'{}'); await db.from('device_app_scans').insert({package:gp,app_label:labels[gp],version:m.version||null,report:m});
           const st=JSON.parse(GranaryApp.strings(gp,'(?i)(intent:|component|android\\.media\\.tv|deep.?link|iplayer|itv|channel4|my5|bbc|uk\\.co\\.|air\\.ITV|com\\.channel4|amzn|playback|launch)')||'{}');
           await db.from('device_app_scans').insert({package:gp,app_label:labels[gp]+' (strings)',report:st}); saved+=2; }
