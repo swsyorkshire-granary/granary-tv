@@ -22,7 +22,7 @@ const directory = [
   { id: 1, name: 'BBC One London' }, { id: 2, name: 'BBC One Yorks & Lincs' }, { id: 3, name: 'BBC One Yorkshire' },
   { id: 4, name: 'BBC One HD' }, { id: 5, name: 'BBC Two' }, { id: 6, name: 'BBC Two Wales' },
   { id: 7, name: 'ITV1 London' }, { id: 8, name: 'ITV1 +1' }, { id: 9, name: 'ITV1 Yorkshire' }, { id: 10, name: 'ITV2' },
-  { id: 11, name: 'Channel 4 +1' }, { id: 12, name: 'Channel 4' }, { id: 13, name: 'Channel 5' }, { id: 14, name: 'ITV3 HD' },
+  { id: 11, name: 'Channel 4+1 ROI' }, { id: 15, name: 'Channel 4 ROI' }, { id: 12, name: 'Channel 4 London HD' }, { id: 13, name: 'Channel 5' }, { id: 14, name: 'ITV3 HD' },
 ];
 function listingsFor(id) {
   const out = []; const d = new Date(); d.setHours(0, 0, 0, 0);
@@ -78,7 +78,7 @@ for (const url of ['/index.html', '/tv.html']) {
   check(JSON.stringify(r.map(x => x[0])) === JSON.stringify(['BBC One', 'BBC Two', 'ITV1', 'Channel 4', 'Channel 5']), 'default rows, no Sky');
   check(r[0][1] === 'BBC One Yorkshire', 'BBC One uses Yorkshire');
   check(r[2][1] === 'ITV1 Yorkshire', 'ITV1 uses Yorkshire');
-  check(r[3][1] === 'Programme listings', 'Channel 4 not +1');
+  check(r[3][1] === 'Channel 4 London HD', 'Channel 4 not +1 or ROI');
   check(!(await page.textContent('#notice')).includes('Not present'), 'no "not present" warning');
   check((await page.$$('.program')).length > 0, 'programmes drawn');
   check(await page.textContent('#cloudStatus') === 'Signed in: test@example.com', 'signed-in bar shows');
@@ -100,7 +100,7 @@ for (const url of ['/index.html', '/tv.html']) {
 console.log('\n== existing iPad selection (London ITV + old Sky rows + hand-added ITV3)');
 {
   const old = [{ id: 1, display: 'BBC One', sourceName: 'BBC One London' }, { id: 5, display: 'BBC Two', sourceName: 'BBC Two' }, { id: 7, display: 'ITV1', sourceName: 'ITV1 London' },
-    { id: 12, display: 'Channel 4', sourceName: 'Channel 4' }, { id: 13, display: 'Channel 5', sourceName: 'Channel 5' }, { id: null, display: 'Sky Atlantic', sourceName: 'Sky Atlantic' },
+    { id: 11, display: 'Channel 4', sourceName: 'Channel 4+1 ROI' }, { id: 13, display: 'Channel 5', sourceName: 'Channel 5' }, { id: null, display: 'Sky Atlantic', sourceName: 'Sky Atlantic' },
     { id: null, display: 'Sky Crime', sourceName: 'Sky Crime' }, { id: 14, display: 'ITV3 HD', sourceName: 'ITV3 HD' }];
   const { page, errors, ctx } = await openPage('/index.html', { storage: old });
   const r = await rows(page);
@@ -109,6 +109,7 @@ console.log('\n== existing iPad selection (London ITV + old Sky rows + hand-adde
   check(r.some(x => x[0] === 'BBC One' && x[1] === 'BBC One Yorkshire'), 'saved BBC One London moved to Yorkshire');
   check(!r.some(x => x[0].startsWith('Sky')), 'old Sky rows removed');
   check(r.some(x => x[0] === 'ITV3 HD'), 'hand-added channel kept');
+  check(r.some(x => x[0] === 'Channel 4' && x[1] === 'Channel 4 London HD'), 'saved Channel 4+1 ROI moved to proper Channel 4');
   check((await page.$$eval('.program b', b => b.map(x => x.textContent))).includes('Calendar News Test'), 'ITV1 row shows Yorkshire listings');
   check(errors.length === 0, 'no console errors' + (errors.length ? ': ' + errors.join(' | ') : ''));
   await ctx.close();

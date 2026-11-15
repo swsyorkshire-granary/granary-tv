@@ -20,8 +20,9 @@ function channelLabel(c){return c.name||c.title||c.channel_name||c.display_name|
 // The user is in South/West Yorkshire, so regional BBC One and ITV1 prefer the Yorkshire versions.
 function channelScore(wanted,c){
  const n=norm(channelLabel(c)),w=norm(wanted);
- const plusOne=/(plus1|\+1)$/i.test(channelLabel(c).replace(/\s/g,''))||/^(itv1|channel4|channel5|bbcone|bbctwo)1$/.test(n);
- if(plusOne)return 0;
+ const raw=channelLabel(c).toLowerCase().replace(/\s/g,'');
+ // Never pick timeshift (+1, +24) or Republic of Ireland feeds for a default channel.
+ if(/\+\d|plus\d/.test(raw)||/\broi\b|ireland/i.test(channelLabel(c)))return 0;
  if(w==='bbcone'||w==='bbc1'){
   if(!(n.startsWith('bbcone')||n.startsWith('bbc1')))return 0;
   if(n.includes('lincs'))return 2;               // BBC One Yorks & Lincs is the Hull/Lincoln region
@@ -37,7 +38,7 @@ function channelScore(wanted,c){
   return 1;
  }
  if(w==='bbctwo'){if(!n.startsWith('bbctwo'))return 0;return (n==='bbctwo'||n==='bbctwohd')?3:(n.includes('england')?2:1)}
- if(w==='channel4'){if(!n.startsWith('channel4'))return 0;return (n==='channel4'||n==='channel4hd')?3:1}
+ if(w==='channel4'){if(!n.startsWith('channel4'))return 0;if(n==='channel4'||n==='channel4hd')return 3;return /yorkshire|north|england/.test(n)?2:1}
  if(w==='channel5'){if(n==='channel5'||n==='5'||n==='5hd'||n==='channel5hd')return 3;return n.startsWith('channel5')?1:0}
  if(n===w)return 3;
  return n.startsWith(w)?1:0;
