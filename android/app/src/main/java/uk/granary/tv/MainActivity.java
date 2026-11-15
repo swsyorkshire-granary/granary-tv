@@ -1,0 +1,204 @@
+package uk.granary.tv;
+
+import android.app.Activity;
+import android.content.ActivityNotFoundException;
+import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.content.pm.ResolveInfo;
+import android.graphics.Color;
+import android.net.Uri;
+import android.os.Bundle;
+import android.os.Message;
+import android.view.KeyEvent;
+import android.view.View;
+import android.view.WindowManager;
+import android.webkit.CookieManager;
+import android.webkit.JavascriptInterface;
+import android.webkit.WebChromeClient;
+import android.webkit.WebResourceRequest;
+import android.webkit.WebSettings;
+import android.webkit.WebView;
+import android.webkit.WebViewClient;
+import android.widget.Toast;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Locale;
+
+/**
+ * Granary TV for Fire TV.
+ * Shows the Granary TV website (TV layout) full screen. When a "Watch"/"Open" link points at a
+ * streaming service, it opens that service's installed app instead of a web page:
+ *   1. ask Android to open the link in the service's app (works where the app supports deep links),
+ *   2. otherwise just launch the service's app,
+ *   3. otherwise open the link in the web browser.
+ * The guide itself lives on the website, so website updates appear here without reinstalling.
+ */
+public class MainActivity extends Activity {
+    static final String SITE_HOST = "neon-empanada-981548.netlify.app";
+    static final String START_URL = "https://" + SITE_HOST + "/tv.html";
+
+    /** host fragment -> words that appear in the installed app's name on Fire TV */
+    static final String[][] SERVICES = {
+        {"bbc.co.uk", "BBC iPlayer", "iplayer"},
+        {"itv.com", "ITVX", "itvx", "itv"},
+        {"channel4.com", "Channel 4", "channel 4", "all 4", "4od"},
+        {"channel5.com", "My5", "my5", "channel 5", "5"},
+        {"amazon.co.uk", "Prime Video", "prime video"},
+        {"primevideo.com", "Prime Video", "prime video"},
+        {"disneyplus.com", "Disney+", "disney"},
+        {"nowtv.com", "NOW", "now", "now tv"},
+        {"sky.com", "NOW", "now", "now tv", "sky"},
+        {"tv.apple.com", "Apple TV", "apple tv"},
+        {"netflix.com", "Netflix", "netflix"},
+        {"youtube.com", "YouTube", "youtube"},
+        {"u.co.uk", "U", "uktv play", "u"},
+    };
+
+    WebView web;
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        web = new WebView(this);
+        web.setBackgroundColor(Color.parseColor("#0c1422"));
+        web.setFocusable(true);
+        web.setFocusableInTouchMode(true);
+        setContentView(web);
+
+        WebSettings s = web.getSettings();
+        s.setJavaScriptEnabled(true);
+        s.setDomStorageEnabled(true);
+        s.setDatabaseEnabled(true);
+        s.setSupportMultipleWindows(true);
+        s.setJavaScriptCanOpenWindowsAutomatically(true);
+        s.setMediaPlaybackRequiresUserGesture(false);
+        s.setUserAgentString(s.getUserAgentString() + " GranaryTVApp/1");
+        CookieManager.getInstance().setAcceptCookie(true);
+        CookieManager.getInstance().setAcceptThirdPartyCookies(web, true);
+
+        web.addJavascriptInterface(new Bridge(), "GranaryApp");
+        web.setWebViewClient(new WebViewClient() {
+            @Override
+            public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest req) {
+                return route(req.getUrl());
+            }
+        });
+        web.setWebChromeClient(new WebChromeClient() {
+            // Links with target="_blank" arrive here; catch their address and route it.
+            @Override
+            public boolean onCreateWindow(WebView view, boolean isDialog, boolean userGesture, Message resultMsg) {
+                WebView catcher = new WebView(MainActivity.this);
+                catcher.setWebViewClient(new WebViewClient() {
+                    @Override
+                    public boolean shouldOverrideUrlLoading(WebView v, WebResourceRequest req) {
+                        Uri u = req.getUrl();
+                        if (isOwnSite(u)) web.loadUrl(u.toString()); else openExternal(u);
+                        v.destroy();
+                        return true;
+                    }
+                });
+                WebView.WebViewTransport t = (WebView.WebViewTransport) resultMsg.obj;
+                t.setWebView(catcher);
+                resultMsg.sendToTarget();
+                return true;
+            }
+        });
+
+        if (savedInstanceState != null) web.restoreState(savedInstanceState);
+        else web.loadUrl(START_URL);
+    }
+
+    boolean isOwnSite(Uri u) {
+        String h = u.getHost();
+        return h != null && (h.equals(SITE_HOST) || h.endsWith("supabase.co") || h.endsWith("ontvnow.co.uk"));
+    }
+
+    /** true = handled outside the WebView */
+    boolean route(Uri u) {
+        String scheme = u.getScheme() == null ? "" : u.getScheme();
+        if (!scheme.startsWith("http")) { openExternal(u); return true; }
+        if (isOwnSite(u)) return false;
+        openExternal(u);
+        return true;
+    }
+
+    String[] serviceFor(Uri u) {
+        String h = u.getHost() == null ? "" : u.getHost().toLowerCase(Locale.UK);
+        for (String[] s : SERVICES) if (h.equals(s[0]) || h.endsWith("." + s[0])) return s;
+        return null;
+    }
+
+    /** Installed TV apps whose name matches the service. */
+    List<String> findApps(String[] service) {
+        List<String> found = new ArrayList<>();
+        PackageManager pm = getPackageManager();
+        for (String cat : new String[]{"android.intent.category.LEANBACK_LAUNCHER", Intent.CATEGORY_LAUNCHER}) {
+            Intent q = new Intent(Intent.ACTION_MAIN).addCategory(cat);
+            for (ResolveInfo ri : pm.queryIntentActivities(q, 0)) {
+                String pkg = ri.activityInfo.packageName;
+                if (pkg.equals(getPackageName()) || found.contains(pkg)) continue;
+                String label = String.valueOf(ri.loadLabel(pm)).toLowerCase(Locale.UK).trim();
+                for (int i = 2; i < service.length; i++) {
+                    String w = service[i];
+                    boolean match = w.length() <= 3 ? (label.equals(w) || label.startsWith(w + " ")) : (label.equals(w) || label.startsWith(w + " ") || label.contains(w));
+                    if (match) { found.add(pkg); break; }
+                }
+            }
+        }
+        return found;
+    }
+
+    void openExternal(Uri u) {
+        String[] service = serviceFor(u);
+        if (service != null) {
+            for (String pkg : findApps(service)) {
+                // 1. deep link straight into the programme, if the app accepts it
+                Intent deep = new Intent(Intent.ACTION_VIEW, u).setPackage(pkg).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                if (deep.resolveActivity(getPackageManager()) != null) {
+                    try { startActivity(deep); toast("Opening " + service[1] + "…  Press Back to return"); return; }
+                    catch (ActivityNotFoundException | SecurityException ignored) { }
+                }
+                // 2. just open the app
+                Intent launch = getPackageManager().getLeanbackLaunchIntentForPackage(pkg);
+                if (launch == null) launch = getPackageManager().getLaunchIntentForPackage(pkg);
+                if (launch != null) {
+                    try {
+                        startActivity(launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+                        toast("Opened " + service[1] + " — search for the programme there");
+                        return;
+                    } catch (ActivityNotFoundException | SecurityException ignored) { }
+                }
+            }
+            toast(service[1] + " app not found on this device — opening the web page");
+        }
+        // 3. browser fallback
+        try { startActivity(new Intent(Intent.ACTION_VIEW, u).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)); }
+        catch (ActivityNotFoundException e) { toast("No app can open this link"); }
+    }
+
+    void toast(String m) { Toast.makeText(this, m, Toast.LENGTH_LONG).show(); }
+
+    /** Lets the website know it is running inside the app (window.GranaryApp.isApp()). */
+    class Bridge {
+        @JavascriptInterface public boolean isApp() { return true; }
+        @JavascriptInterface public String version() { return BuildConfig.VERSION_NAME; }
+        @JavascriptInterface public void open(String url) { runOnUiThread(() -> openExternal(Uri.parse(url))); }
+    }
+
+    @Override
+    public boolean onKeyDown(int keyCode, KeyEvent event) {
+        if (keyCode == KeyEvent.KEYCODE_BACK && web.canGoBack()) { web.goBack(); return true; }
+        return super.onKeyDown(keyCode, event);
+    }
+
+    @Override
+    protected void onSaveInstanceState(Bundle out) { super.onSaveInstanceState(out); web.saveState(out); }
+
+    @Override
+    protected void onResume() { super.onResume(); web.onResume(); web.requestFocus(View.FOCUS_DOWN); }
+
+    @Override
+    protected void onPause() { web.onPause(); CookieManager.getInstance().flush(); super.onPause(); }
+}

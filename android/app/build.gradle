@@ -1,0 +1,25 @@
+plugins { id 'com.android.application' }
+android {
+    namespace 'uk.granary.tv'
+    compileSdk 34
+    defaultConfig {
+        applicationId 'uk.granary.tv'
+        minSdk 22
+        targetSdk 34
+        versionCode 1
+        versionName '1.0'
+    }
+    buildFeatures { buildConfig true }
+    signingConfigs {
+        granary {
+            storeFile file('granary-release.jks')
+            storePassword 'granarytv'
+            keyAlias 'granary'
+            keyPassword 'granarytv'
+        }
+    }
+    buildTypes {
+        release { minifyEnabled false; signingConfig signingConfigs.granary }
+    }
+    compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
+}
