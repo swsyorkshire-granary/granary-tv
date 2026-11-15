@@ -1,0 +1,83 @@
+@media(max-width:649px){.libraryGrid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.libraryCount{font-size:12px;color:var(--muted);padding:0 0 8px}
+
+/* V14: broad smart-TV browser and remote focus support */
+button,a,select{outline-offset:3px}
+button:focus-visible,a:focus-visible,select:focus-visible{outline:3px solid #f5d76e;z-index:30}
+
+body{font-size:19px}
+header{padding:22px 26px}
+.brand h1{font-size:32px}.sub{font-size:16px}
+button,select{font-size:18px}
+button{padding:12px 16px;min-height:46px}
+.daysbar{gap:8px;margin-top:18px}
+.day{font-size:16px;padding:12px 5px}.day small{font-size:13px}
+.toolbar{padding:14px 20px;gap:12px}
+.toolbar label{font-size:14px}
+select{padding:10px 12px}
+.status{font-size:14px}
+.notice{font-size:15px;padding:12px 18px}
+:root{--left:175px}
+.guide-wrap{max-height:calc(100vh - 210px);max-height:calc(100dvh - 210px)}
+.channel-row{min-height:104px}
+.channel{padding:13px 12px}
+.channel strong{font-size:16px}.channel small{font-size:13px}
+.corner{font-size:14px;padding:15px 12px}
+.hours div{font-size:14px;padding:15px 6px}
+.timeline{min-height:104px}
+.program{top:8px;height:88px;padding:9px 10px;gap:6px}
+.program b{font-size:15px;line-height:1.25}
+.program span{font-size:13px}
+.program:focus,button:focus,select:focus{outline:4px solid #fff;outline-offset:2px;z-index:30}
+.sheet{padding:26px}.sheet h2{font-size:27px}.sheet p{font-size:19px}
+.close{min-width:90px}
+footer{font-size:13px;padding:15px 20px}
+
+/* Compact television layout: prioritise all five channel rows on one screen */
+html,body{height:100%;overflow:hidden}
+body{font-size:16px}
+header{position:relative;padding:8px 14px 7px}
+.brand h1{font-size:23px;letter-spacing:2px}
+.sub{font-size:11px;margin-top:1px}
+.actions button{font-size:14px;padding:7px 10px;min-height:34px}
+.daysbar{margin-top:7px;gap:4px}
+.days{gap:4px}
+.day{font-size:12px;padding:5px 1px;border-radius:6px}
+.day small{font-size:10px;margin-top:1px}
+.toolbar{padding:5px 10px;gap:6px;min-height:39px;flex-wrap:nowrap}
+.toolbar label{font-size:10px}
+.toolbar select{font-size:13px;padding:4px 6px}
+.status{font-size:10px}
+.notice{padding:5px 10px;font-size:11px}
+:root{--left:150px}
+.guide-wrap{height:calc(100vh - 155px);height:calc(100dvh - 155px);max-height:none;overflow:auto}
+.timehead .corner{padding:7px 8px;font-size:10px}
+.hours div{padding:7px 3px;font-size:11px}
+.channel-row{min-height:78px;height:78px}
+.channel{padding:6px 9px;gap:3px}
+.channel strong{font-size:14px;line-height:1.15}
+.channel small{font-size:10px}
+.timeline{min-height:78px;height:78px}
+.program{top:5px;height:68px;padding:5px 6px;gap:3px}
+.program b{font-size:13px;line-height:1.12}
+.program span{font-size:10px}
+.now-line span{font-size:9px}
+footer{display:none!important}
+.modal .sheet{padding:18px}
+@media (max-height:760px){
+ header{padding:6px 12px 5px}
+ .brand h1{font-size:21px}
+ .daysbar{margin-top:5px}
+ .day{padding:4px 1px}
+ .toolbar{min-height:34px;padding:4px 8px}
+ .guide-wrap{height:calc(100vh - 130px);height:calc(100dvh - 130px)}
+ .channel-row,.timeline{height:72px;min-height:72px}
+ .program{height:62px;top:4px}
+ .program b{font-size:12px}
+}
+
+/* Fire TV Silk: use document scrolling rather than a nested scrolling panel */
+html, body { height:auto !important; min-height:100%; overflow-x:auto !important; overflow-y:auto !important; }
+body { overflow-y:visible !important; }
+.guide-wrap { height:auto !important; max-height:none !important; overflow:visible !important; }
+header { position:relative; }

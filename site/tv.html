@@ -1,225 +1,36 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#101827"><title>Granary TV</title>
-<style>
-:root{color-scheme:dark;--bg:#0c1422;--panel:#131f31;--panel2:#1b2a40;--line:#2a3a51;--muted:#9aabc0;--text:#f2f6fb;--left:135px}
-*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:15px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}header{padding:16px;background:#101b2b;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:20}.brand{display:flex;justify-content:space-between;align-items:center;gap:8px}.brand h1{font-size:25px;letter-spacing:.08em;margin:0}.sub{font-size:12px;color:var(--muted);margin-top:3px}.actions{display:flex;gap:7px;align-items:center}.lib-link{display:inline-block;background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:9px 11px;color:var(--text);text-decoration:none;white-space:nowrap}button,select{font:inherit;color:inherit}button{background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:9px 11px}.daysbar{display:flex;gap:5px;align-items:center;margin-top:14px}.days{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:5px;flex:1}.day{padding:8px 1px;text-align:center;background:var(--panel);border:1px solid var(--line);border-radius:8px;font-size:12px;min-width:0}.day small{display:block;color:var(--muted);font-size:10px;margin-top:3px}.day.active{background:#174b78;border-color:#5aaeff}.toolbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:10px 14px;background:var(--panel);border-bottom:1px solid var(--line)}.toolbar label{font-size:11px;color:var(--muted)}select{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:7px}.status{margin-left:auto;color:var(--muted);font-size:11px}.notice{display:none;padding:10px 14px;background:#332b19;color:#f6d99a;font-size:12px;line-height:1.4}.guide-wrap{overflow:auto;max-height:calc(100dvh - 180px)}.guide{min-width:930px}.timehead{display:grid;grid-template-columns:var(--left) 1fr;position:sticky;top:0;z-index:10;background:#101b2b}.corner{position:sticky;left:0;background:#101b2b;z-index:12;padding:12px 9px;border-right:1px solid var(--line);font-size:11px;color:var(--muted)}.hours{display:grid;grid-template-columns:repeat(var(--hours),minmax(46px,1fr))}.hours div{padding:12px 4px;border-left:1px solid var(--line);font-size:11px;color:var(--muted)}.channel-row{display:grid;grid-template-columns:var(--left) 1fr;min-height:82px;border-bottom:1px solid var(--line)}.channel{position:sticky;left:0;z-index:5;background:#142238;border-right:1px solid var(--line);padding:10px 8px;display:flex;flex-direction:column;justify-content:center;gap:4px}.channel strong{font-size:12px}.channel small{font-size:10px;color:var(--muted)}.timeline{position:relative;min-height:82px;background-image:linear-gradient(to right,transparent calc(100% - 1px),var(--line) 1px);background-size:calc(100% / var(--hours)) 100%}.program{position:absolute;top:7px;height:68px;border-radius:7px;padding:6px 7px;overflow:hidden;background:#24496b;border:1px solid #3b6e99;min-width:3px;text-align:left;display:flex;flex-direction:column;gap:4px}.program:nth-child(3n){background:#3d3a68;border-color:#6965a1}.program:nth-child(3n+1){background:#28594f;border-color:#4a8d7e}.program b{font-size:11px;line-height:1.2}.program span{font-size:10px;color:#d1deeb;white-space:nowrap}
-.now-line{position:absolute;top:0;bottom:0;width:2px;background:#ff5656;z-index:8;pointer-events:none;box-shadow:0 0 5px #ff565688}
-.now-line span{position:absolute;top:0;left:3px;background:#ff5656;color:#fff;font-size:9px;font-weight:800;letter-spacing:.04em;padding:2px 4px;border-radius:0 0 4px 4px;white-space:nowrap}
-.program:focus{outline:2px solid #fff;z-index:9}
-.empty{padding:30px 18px;text-align:center;color:var(--muted);line-height:1.5}.modal{display:none;position:fixed;inset:0;background:#0009;z-index:50;align-items:flex-end}.modal.open{display:flex}.sheet{background:#17253a;border-radius:18px 18px 0 0;padding:20px;width:100%;max-height:78dvh;overflow:auto}.sheet h2{margin:0 0 10px}.sheet p{color:#c1cede;line-height:1.45}.close{float:right}.chips{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}.chip{border-radius:18px;font-size:12px}.sheet select{width:100%;margin:8px 0 12px}footer{padding:12px 15px;color:var(--muted);font-size:11px;line-height:1.4;border-top:1px solid var(--line)}
-
-/* V14: broad smart-TV browser and remote focus support */
-button,a,select{outline-offset:3px}
-button:focus-visible,a:focus-visible,select:focus-visible{outline:3px solid #f5d76e;z-index:30}
-@media (min-width:1100px) and (pointer:coarse){.guide-wrap{max-height:calc(100dvh - 170px)}.program{min-height:66px}}
-@media (max-width:900px){.guide{min-width:850px}.cloudBar{gap:6px}.cloudBar button{min-height:42px}}
-</style>
-<style id="agrid-tv-overrides">
-body{font-size:19px}
-header{padding:22px 26px}
-.brand h1{font-size:32px}.sub{font-size:16px}
-button,select{font-size:18px}
-button{padding:12px 16px;min-height:46px}
-.daysbar{gap:8px;margin-top:18px}
-.day{font-size:16px;padding:12px 5px}.day small{font-size:13px}
-.toolbar{padding:14px 20px;gap:12px}
-.toolbar label{font-size:14px}
-select{padding:10px 12px}
-.status{font-size:14px}
-.notice{font-size:15px;padding:12px 18px}
-:root{--left:175px}
-.guide-wrap{max-height:calc(100vh - 210px);max-height:calc(100dvh - 210px)}
-.channel-row{min-height:104px}
-.channel{padding:13px 12px}
-.channel strong{font-size:16px}.channel small{font-size:13px}
-.corner{font-size:14px;padding:15px 12px}
-.hours div{font-size:14px;padding:15px 6px}
-.timeline{min-height:104px}
-.program{top:8px;height:88px;padding:9px 10px;gap:6px}
-.program b{font-size:15px;line-height:1.25}
-.program span{font-size:13px}
-.program:focus,button:focus,select:focus{outline:4px solid #fff;outline-offset:2px;z-index:30}
-.sheet{padding:26px}.sheet h2{font-size:27px}.sheet p{font-size:19px}
-.close{min-width:90px}
-footer{font-size:13px;padding:15px 20px}
-</style>
-
-<style id="agrid-tv-fit-v11">
-/* Compact television layout: prioritise all five channel rows on one screen */
-html,body{height:100%;overflow:hidden}
-body{font-size:16px}
-header{position:relative;padding:8px 14px 7px}
-.brand h1{font-size:23px;letter-spacing:2px}
-.sub{font-size:11px;margin-top:1px}
-.actions button{font-size:14px;padding:7px 10px;min-height:34px}
-.daysbar{margin-top:7px;gap:4px}
-.days{gap:4px}
-.day{font-size:12px;padding:5px 1px;border-radius:6px}
-.day small{font-size:10px;margin-top:1px}
-.toolbar{padding:5px 10px;gap:6px;min-height:39px;flex-wrap:nowrap}
-.toolbar label{font-size:10px}
-.toolbar select{font-size:13px;padding:4px 6px}
-.status{font-size:10px}
-.notice{padding:5px 10px;font-size:11px}
-:root{--left:150px}
-.guide-wrap{height:calc(100vh - 155px);height:calc(100dvh - 155px);max-height:none;overflow:auto}
-.timehead .corner{padding:7px 8px;font-size:10px}
-.hours div{padding:7px 3px;font-size:11px}
-.channel-row{min-height:78px;height:78px}
-.channel{padding:6px 9px;gap:3px}
-.channel strong{font-size:14px;line-height:1.15}
-.channel small{font-size:10px}
-.timeline{min-height:78px;height:78px}
-.program{top:5px;height:68px;padding:5px 6px;gap:3px}
-.program b{font-size:13px;line-height:1.12}
-.program span{font-size:10px}
-.now-line span{font-size:9px}
-footer{display:none!important}
-.modal .sheet{padding:18px}
-@media (max-height:760px){
- header{padding:6px 12px 5px}
- .brand h1{font-size:21px}
- .daysbar{margin-top:5px}
- .day{padding:4px 1px}
- .toolbar{min-height:34px;padding:4px 8px}
- .guide-wrap{height:calc(100vh - 130px);height:calc(100dvh - 130px)}
- .channel-row,.timeline{height:72px;min-height:72px}
- .program{height:62px;top:4px}
- .program b{font-size:12px}
-}
-</style>
-</head><body>
-<header><div class="brand"><div><h1>GRANARY TV</h1><div class="sub">Your rolling 7-day television guide</div></div><div class="actions"><a class="lib-link" href="library-tv-test.html">My Library</a><button id="refresh">↻ Refresh</button><button id="manage">＋ Channels</button></div></div><div class="daysbar"><button id="prev">‹</button><div class="days" id="days"></div><button id="next">›</button></div></header>
+<link rel="stylesheet" href="css/app.css?v=18">
+<link rel="stylesheet" href="css/tv.css?v=18">
+</head><body class="tv">
+<header><div class="brand"><div><h1>GRANARY TV</h1><div class="sub">Your rolling 7-day television guide</div></div><div class="actions"><button id="refresh">↻ Refresh</button><button id="manage">＋ Channels</button></div></div><div class="daysbar"><button id="prev">‹</button><div class="days" id="days"></div><button id="next">›</button></div></header>
+<div class="cloudBar"><button id="signInBtn">Sign in / Password</button><button id="signOutBtn" style="display:none">Sign out</button><button id="libraryBtn" disabled>My Library</button><button id="servicesBtn" disabled>My Streaming Services</button><span id="cloudStatus" class="cloudStatus">Connecting to Granary TV library…</span></div>
 <div class="toolbar"><label>START</label><select id="start"></select><label>END</label><select id="end"></select><span class="status" id="status">Finding UK channels…</span></div><div class="notice" id="notice"></div>
 <main class="guide-wrap"><div class="guide" id="guide"></div></main><footer>Listings supplied by onTVnow public UK TV listings feed. Programme data is not a video stream; coverage depends on the source.</footer>
 <div class="modal" id="modal"><div class="sheet"><button class="close" id="close">Close</button><h2 id="modalTitle">Channels</h2><p id="modalHelp">Tap a channel to remove it, or add another channel from the listings directory.</p><div class="chips" id="chips"></div><select id="addSelect"></select><button id="addButton">Add channel</button></div></div>
-<script>
-const API='https://www.ontvnow.co.uk/api/v1';
-const DEFAULTS=['BBC One','BBC Two','ITV1','Channel 4','Channel 5','Sky Atlantic','Sky Witness','Sky Comedy','Sky Documentaries','Sky Crime'];
-let directory=[],channels=[],dataByChannel={},weekOffset=0,selected=0,startHour=6,endHour=24;
-function todayStart(){const d=new Date();return Math.floor((d.getHours()*60+d.getMinutes())/30)/2}
-function syncNow(){if(weekOffset===0&&selected===0){startHour=todayStart();$('start').value=String(startHour)}}
-const $=id=>document.getElementById(id);
-const pad=n=>String(n).padStart(2,'0');
-const dateFor=i=>{let d=new Date();d.setHours(0,0,0,0);d.setDate(d.getDate()+weekOffset*7+i);return d};
-const dateKey=d=>`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
-const dateText=d=>d.toLocaleDateString('en-GB',{weekday:'short',day:'numeric'});
-const norm=s=>String(s||'').toLowerCase().replace(/[^a-z0-9]/g,'');
-const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-function isoLocal(d){return `${dateKey(d)}T${pad(d.getHours())}:${pad(d.getMinutes())}:00${-d.getTimezoneOffset()>=0?'+':'-'}${pad(Math.floor(Math.abs(d.getTimezoneOffset())/60))}:${pad(Math.abs(d.getTimezoneOffset())%60)}`}
-function getArr(j){if(Array.isArray(j))return j;for(const k of ['data','channels','listings','results','items'])if(Array.isArray(j?.[k]))return j[k];return []}
-async function getJSON(url){const r=await fetch(url,{headers:{Accept:'application/json'}});if(!r.ok)throw Error('HTTP '+r.status+' from listings feed');return r.json()}
-function channelLabel(c){return c.name||c.title||c.channel_name||c.display_name||''}
-function matchChannel(wanted,c){
- const n=norm(channelLabel(c)),w=norm(wanted);
- if(w==='bbcone'||w==='bbc1')return n==='bbcone'||n==='bbc1'||n.startsWith('bbconeyorkshire')||n.startsWith('bbconeyorkslincs')||n.startsWith('bbc1');
- if(w==='bbctwo')return n==='bbctwo'||n.startsWith('bbctwo');
- if(w==='itv1')return n==='itv1'||n.startsWith('itv1');
- if(w==='channel4')return n==='channel4'||n.startsWith('channel4');
- if(w==='channel5')return n==='channel5'||n==='5'||n.startsWith('channel5')||n==='5hd';
- if(w==='skyatlantic')return n.includes('skyatlantic');
- if(w==='skywitness')return n.includes('skywitness');
- if(w==='skycomedy')return n.includes('skycomedy');
- if(w==='skydocumentaries')return n.includes('skydocumentaries');
- if(w==='skycrime')return n.includes('skycrime');
- return n===w;
-}
-function dateOf(v){if(!v)return null;let d=new Date(v);if(!Number.isNaN(+d))return d;return null}
-function normalize(p){
- const s=dateOf(p.start||p.start_time||p.starts_at||p.start_datetime||p.airtime||p.date_start);
- const e=dateOf(p.end||p.end_time||p.ends_at||p.stop||p.stop_time||p.end_datetime||p.date_end);
- if(!s)return null;const end=e||new Date(+s+(Number(p.duration||p.runtime||30)*60000));
- return {title:p.title||p.name||p.programme||p.program_name||'Programme',start:s,end,description:p.description||p.summary||p.synopsis||'',genre:p.genre||p.category||p.type||'',url:p.url||p.link||''};
-}
-function renderDays(){const el=$('days');el.innerHTML='';for(let i=0;i<7;i++){const d=dateFor(i),b=document.createElement('button');b.className='day'+(i===selected?' active':'');b.innerHTML=`${dateText(d)}<small>${weekOffset===0&&i===0?'TODAY':d.toLocaleDateString('en-GB',{month:'short'})}</small>`;b.onclick=()=>{selected=i;if(weekOffset===0&&i===0)syncNow();else {startHour=6;$('start').value='6'}renderDays();render()};el.append(b)}}
-function render(){
- const d=dateFor(selected),key=dateKey(d),g=$('guide');g.innerHTML='';
- const slots=Math.ceil(endHour-startHour);
- const head=document.createElement('div');head.className='timehead';head.innerHTML=`<div class="corner">CHANNEL</div><div class="hours" style="--hours:${slots}">${Array.from({length:slots},(_,i)=>{const m=Math.round((startHour+i)*60);return `<div>${pad(Math.floor(m/60))}:${pad(m%60)}</div>`}).join('')}</div>`;g.append(head);
- let count=0;
- channels.forEach(ch=>{
-  const row=document.createElement('div');row.className='channel-row';const lab=document.createElement('div');lab.className='channel';lab.innerHTML=`<strong>${esc(ch.display)}</strong><small>${ch.id?'Programme listings':'Not in feed'}</small>`;
-  const line=document.createElement('div');line.className='timeline';line.style.setProperty('--hours',slots);
-  (dataByChannel[ch.id]||[]).filter(p=>dateKey(p.start)===key).forEach(p=>{
-   const from=startHour*60,to=endHour*60,a=p.start.getHours()*60+p.start.getMinutes(),b=p.end.getHours()*60+p.end.getMinutes()+(dateKey(p.end)!==key?1440:0);
-   if(b<=from||a>=to)return;const left=Math.max(0,(a-from)/(to-from)*100),right=Math.min(to,b);
-   const btn=document.createElement('button');btn.className='program';btn.style.left=left+'%';btn.style.width=Math.max(.8,(right-Math.max(a,from))/(to-from)*100)+'%';
-   btn.innerHTML=`<b>${esc(p.title)}</b><span>${p.start.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})}–${p.end.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})}</span>`;btn.onclick=()=>showProgramme(p,ch);line.append(btn);count++;
-  });
-  if(weekOffset===0&&selected===0){
-   const now=new Date(),minute=now.getHours()*60+now.getMinutes(),from=startHour*60,to=endHour*60;
-   if(minute>=from&&minute<to){
-    const marker=document.createElement('div');marker.className='now-line';marker.style.left=((minute-from)/(to-from)*100)+'%';
-    if(channels[0]===ch){const tag=document.createElement('span');tag.textContent='NOW';marker.append(tag)}
-    line.append(marker);
-   }
-  }
-  row.append(lab,line);g.append(row);
- });
- if(!count){const e=document.createElement('div');e.className='empty';e.textContent='No programmes were returned for this date. Try another date or refresh the listings.';g.append(e)}
-}
-function showProgramme(p,ch){
- $('modalTitle').textContent=p.title;
- const genre=p.genre||p.category||p.type||'Genre not supplied';
- $('modalHelp').innerHTML=`<b>${esc(ch.display)}</b><br>${p.start.toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'})}<br>${p.start.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})}–${p.end.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})}<br><b>Genre:</b> ${esc(genre)}<hr style="border:0;border-top:1px solid #40516a;margin:12px 0"><b>Programme details</b><p>${esc(p.description||'No further programme description is available from the listings provider.')}</p>`;
- $('chips').style.display='none';$('addSelect').style.display='none';$('addButton').style.display='none';$('modal').classList.add('open')
-}
-function openManage(){$('modalTitle').textContent='Manage channels';$('modalHelp').textContent='Tap a channel to remove it, or add another channel from the source directory.';$('chips').style.display='flex';$('addSelect').style.display='block';$('addButton').style.display='inline-block';$('chips').innerHTML='';channels.forEach(c=>{const b=document.createElement('button');b.className='chip';b.textContent='− '+c.display;b.onclick=()=>{channels=channels.filter(x=>x!==c);save();openManage();loadListings()};$('chips').append(b)});const used=channels.map(c=>String(c.id));$('addSelect').innerHTML='<option value="">Choose a channel…</option>'+directory.filter(c=>!used.includes(String(c.id))).map(c=>`<option value="${esc(c.id)}">${esc(channelLabel(c))}</option>`).join('');$('modal').classList.add('open')}
-function sortChannels(){
- const preferred=['bbcone','bbctwo','itv1','channel4','channel5','skyatlantic'];
- channels.sort((a,b)=>{
-  const rank=x=>{const n=norm(x.display);if(n.includes('bbcone'))return 0;if(n.includes('bbctwo'))return 1;if(n==='itv1')return 2;if(n.includes('channel4'))return 3;if(n.includes('channel5'))return 4;if(n.includes('skyatlantic'))return 5;if(n.includes('skywitness'))return 6;if(n.includes('skycomedy'))return 7;if(n.includes('skydocumentaries'))return 8;if(n.includes('skycrime'))return 9;return 10};
-  return rank(a)-rank(b)||a.display.localeCompare(b.display);
- });
-}
-function save(){localStorage.setItem('agrid-channel-ids',JSON.stringify(channels))}
-async function loadDirectory(){
- const j=await getJSON(API+'/channels');directory=getArr(j);
- if(!directory.length)throw Error('The listings service returned an empty channel directory.');
- channels=JSON.parse(localStorage.getItem('agrid-channel-ids')||'null')||DEFAULTS.map(name=>{const c=directory.find(x=>matchChannel(name,x));return {id:c?.id??null,display:name,sourceName:c?channelLabel(c):name}});
- // Add newly supported default channels to existing saved selections without removing user choices.
- DEFAULTS.forEach(name=>{if(!channels.some(ch=>norm(ch.display)===norm(name))){const c=directory.find(x=>matchChannel(name,x));channels.push({id:c?.id??null,display:name,sourceName:c?channelLabel(c):name});}});
- // Always restore BBC Two if the browser has lost the saved channel selection.
- if(!channels.some(ch=>norm(ch.display)==='bbctwo')){
-  const c=directory.find(x=>matchChannel('BBC Two',x));
-  channels.push({id:c?.id??null,display:'BBC Two',sourceName:c?channelLabel(c):'BBC Two'});
- }
- // Re-resolve any stored null channels if the directory now contains a match.
- channels=channels.map(ch=>{if(ch.id!=null)return ch;const c=directory.find(x=>matchChannel(ch.display,x));return c?{...ch,id:c.id,sourceName:channelLabel(c)}:ch});
- sortChannels();save();
-}
-async function loadListings(){
- $('status').textContent='Loading seven days…';$('notice').style.display='none';dataByChannel={};
- const from=dateFor(0),to=dateFor(7);to.setSeconds(0,0);to.setMinutes(to.getMinutes()-1);
- const active=channels.filter(c=>c.id!=null);let errors=[];
- await Promise.all(active.map(async ch=>{
-  try{
-   const params=new URLSearchParams({channel_id:String(ch.id),from:isoLocal(from),to:isoLocal(to),limit:'100'});
-   let all=[];
-   for(let page=1;page<=10;page++){params.set('page',String(page));const j=await getJSON(API+'/listings?'+params.toString());const arr=getArr(j);all.push(...arr);const meta=j.meta||j.pagination||{};const last=Number(meta.last_page||meta.total_pages||meta.pages||1);if(page>=last||arr.length<100)break}
-   dataByChannel[ch.id]=all.map(normalize).filter(Boolean);
-  }catch(e){errors.push(ch.display+': '+e.message)}
- }));
- render();
- if(errors.length){$('status').textContent='Some listings unavailable';$('notice').style.display='block';$('notice').textContent=errors.join(' · ')}
- else $('status').textContent='Listings refreshed';
- const missing=channels.filter(c=>c.id==null).map(c=>c.display);
- if(missing.length){$('notice').style.display='block';$('notice').textContent+=( $('notice').textContent?' · ':'')+'Not present in source directory: '+missing.join(', ')}
-}
-$('refresh').onclick=()=>{syncNow();loadListings()};$('manage').onclick=openManage;$('close').onclick=()=>$('modal').classList.remove('open');$('modal').onclick=e=>{if(e.target===$('modal'))$('modal').classList.remove('open')};
-$('addButton').onclick=()=>{const id=$('addSelect').value,c=directory.find(x=>String(x.id)===id);if(c){channels.push({id:c.id,display:channelLabel(c),sourceName:channelLabel(c)});sortChannels();save();openManage();loadListings()}};
-$('prev').onclick=()=>{weekOffset--;selected=0;startHour=6;$('start').value='6';renderDays();loadListings()};$('next').onclick=()=>{weekOffset++;selected=0;if(weekOffset===0)syncNow();else{startHour=6;$('start').value='6'}renderDays();loadListings()};
-for(let h=0;h<24;h+=0.5){const m=Math.round(h*60);$('start').add(new Option(pad(Math.floor(m/60))+':'+pad(m%60),h))};for(let h=24;h>=1;h--)$('end').add(new Option((h===24?'24':pad(h))+':00',h));$('start').value=6;$('end').value=24;syncNow();
-$('start').onchange=e=>{startHour=+e.target.value;if(startHour>=endHour){endHour=Math.min(24,startHour+6);$('end').value=endHour}render()};
-$('end').onchange=e=>{endHour=+e.target.value;if(endHour<=startHour){startHour=Math.max(0,endHour-6);$('start').value=String(startHour)}render()};
-renderDays();
-function tickLiveGuide(){
- if(weekOffset===0&&selected===0){
-  const oldStart=startHour;syncNow();
-  if(startHour!==oldStart)render();else render();
- }
-}
-setInterval(tickLiveGuide,30000);
-document.addEventListener('visibilitychange',()=>{if(!document.hidden&&weekOffset===0&&selected===0){syncNow();render()}});
-(async()=>{try{await loadDirectory();await loadListings()}catch(e){$('status').textContent='Listings connection failed';$('notice').style.display='block';$('notice').textContent=e.message+' — the source may be temporarily unavailable or block browser requests.';render()}})();
-</script></body></html>
+
+<div class="cloudPanel" id="authPanel"><div class="cloudCard">
+  <button onclick="document.getElementById('authPanel').classList.remove('open')">Close</button>
+  <h2>Granary TV account</h2><p>Use your existing account on both devices. Set a password here on the iPad first, then use it to sign in on the TV.</p>
+  <input id="authEmail" type="email" autocomplete="email" placeholder="Your email address">
+  <input id="authPassword" type="password" autocomplete="current-password" placeholder="Password (at least 8 characters)">
+  <button id="passwordSignInBtn">Sign in with password</button>
+  <button id="setPasswordBtn" style="display:none">Set / change my password</button>
+  <button id="sendLinkBtn">Email me a sign-in link (backup)</button><div id="authMessage" class="cloudMessage"></div>
+</div></div>
+<div class="cloudPanel" id="servicesPanel"><div class="cloudCard">
+  <button onclick="document.getElementById('servicesPanel').classList.remove('open')">Close</button>
+  <h2>My Streaming Services</h2><p>Choose the services you use. These preferences follow your Granary TV account on both the iPad and television.</p>
+  <div id="servicesChoices" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:14px 0"></div>
+  <button id="saveServicesBtn">Save my services</button><div id="servicesMessage" class="cloudMessage"></div>
+</div></div>
+<div class="cloudPanel" id="libraryPanel"><div class="cloudCard">
+  <div class="libraryHead"><h2>My Granary TV Library</h2><button onclick="document.getElementById('libraryPanel').classList.remove('open')">Close ✕</button></div>
+  <div id="libraryContent">Loading…</div>
+</div></div>
+
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.89.0/dist/umd/supabase.js"></script>
+<script src="js/library.js?v=18"></script>
+<script src="js/guide.js?v=18"></script>
+</body></html>
