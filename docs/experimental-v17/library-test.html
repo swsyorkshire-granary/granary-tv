@@ -1,0 +1,523 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#101827"><title>Granary TV Library Test</title>
+<style>
+:root{color-scheme:dark;--bg:#0c1422;--panel:#131f31;--panel2:#1b2a40;--line:#2a3a51;--muted:#9aabc0;--text:#f2f6fb;--left:135px}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:15px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}header{padding:16px;background:#101b2b;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:20}.brand{display:flex;justify-content:space-between;align-items:center;gap:8px}.brand h1{font-size:25px;letter-spacing:.08em;margin:0}.sub{font-size:12px;color:var(--muted);margin-top:3px}.actions{display:flex;gap:7px}button,select{font:inherit;color:inherit}button{background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:9px 11px}.daysbar{display:flex;gap:5px;align-items:center;margin-top:14px}.days{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:5px;flex:1}.day{padding:8px 1px;text-align:center;background:var(--panel);border:1px solid var(--line);border-radius:8px;font-size:12px;min-width:0}.day small{display:block;color:var(--muted);font-size:10px;margin-top:3px}.day.active{background:#174b78;border-color:#5aaeff}.toolbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:10px 14px;background:var(--panel);border-bottom:1px solid var(--line)}.toolbar label{font-size:11px;color:var(--muted)}select{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:7px}.status{margin-left:auto;color:var(--muted);font-size:11px}.notice{display:none;padding:10px 14px;background:#332b19;color:#f6d99a;font-size:12px;line-height:1.4}.guide-wrap{overflow:auto;max-height:calc(100dvh - 180px)}.guide{min-width:930px}.timehead{display:grid;grid-template-columns:var(--left) 1fr;position:sticky;top:0;z-index:10;background:#101b2b}.corner{position:sticky;left:0;background:#101b2b;z-index:12;padding:12px 9px;border-right:1px solid var(--line);font-size:11px;color:var(--muted)}.hours{display:grid;grid-template-columns:repeat(var(--hours),minmax(46px,1fr))}.hours div{padding:12px 4px;border-left:1px solid var(--line);font-size:11px;color:var(--muted)}.channel-row{display:grid;grid-template-columns:var(--left) 1fr;min-height:82px;border-bottom:1px solid var(--line)}.channel{position:sticky;left:0;z-index:5;background:#142238;border-right:1px solid var(--line);padding:10px 8px;display:flex;flex-direction:column;justify-content:center;gap:4px}.channel strong{font-size:12px}.channel small{font-size:10px;color:var(--muted)}.timeline{position:relative;min-height:82px;background-image:linear-gradient(to right,transparent calc(100% - 1px),var(--line) 1px);background-size:calc(100% / var(--hours)) 100%}.program{position:absolute;top:7px;height:68px;border-radius:7px;padding:6px 7px;overflow:hidden;background:#24496b;border:1px solid #3b6e99;min-width:3px;text-align:left;display:flex;flex-direction:column;gap:4px}.program:nth-child(3n){background:#3d3a68;border-color:#6965a1}.program:nth-child(3n+1){background:#28594f;border-color:#4a8d7e}.program b{font-size:11px;line-height:1.2}.program span{font-size:10px;color:#d1deeb;white-space:nowrap}
+.now-line{position:absolute;top:0;bottom:0;width:2px;background:#ff5656;z-index:8;pointer-events:none;box-shadow:0 0 5px #ff565688}
+.now-line span{position:absolute;top:0;left:3px;background:#ff5656;color:#fff;font-size:9px;font-weight:800;letter-spacing:.04em;padding:2px 4px;border-radius:0 0 4px 4px;white-space:nowrap}
+.program:focus{outline:2px solid #fff;z-index:9}
+.empty{padding:30px 18px;text-align:center;color:var(--muted);line-height:1.5}.modal{display:none;position:fixed;inset:0;background:#0009;z-index:50;align-items:flex-end}.modal.open{display:flex}.sheet{background:#17253a;border-radius:18px 18px 0 0;padding:20px;width:100%;max-height:78dvh;overflow:auto}.sheet h2{margin:0 0 10px}.sheet p{color:#c1cede;line-height:1.45}.close{float:right}.chips{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}.chip{border-radius:18px;font-size:12px}.sheet select{width:100%;margin:8px 0 12px}footer{padding:12px 15px;color:var(--muted);font-size:11px;line-height:1.4;border-top:1px solid var(--line)}
+
+.cloudBar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:8px 14px;background:#0e1929;border-bottom:1px solid var(--line)}
+.cloudBar button{padding:7px 10px;font-size:12px}.cloudStatus{font-size:11px;color:var(--muted)}
+.cloudPanel{display:none;position:fixed;inset:0;background:#000b;z-index:1000;align-items:center;justify-content:center;padding:16px}
+ .cloudPanel.open{display:flex}.cloudCard{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px;width:min(980px,98vw);max-height:90dvh;overflow:auto;box-shadow:0 12px 40px #0009}
+#libraryPanel .cloudCard{width:min(1100px,98vw);max-height:92dvh;padding:0 14px 14px}
+.libraryHead{position:sticky;top:0;z-index:5;background:var(--panel);display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 0 10px;border-bottom:1px solid var(--line);margin-bottom:10px}
+.libraryHead h2{margin:0;font-size:20px}.libraryHead button{flex:none}
+.libraryGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.libraryRow{display:flex;flex-direction:column;align-items:stretch;gap:7px;padding:11px;background:var(--panel2);border:1px solid var(--line);border-radius:11px;min-width:0}
+.libraryRow>b{font-size:14px;line-height:1.25;min-height:2.3em}
+.libraryRow .libraryMeta{font-size:11px;color:var(--muted);line-height:1.35}
+.libraryControls{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px;align-items:center}
+.libraryControls select{min-width:0;width:100%;font-size:12px;padding:7px}
+.libraryControls .removeItem{font-size:11px;padding:7px}
+.primaryProvider{display:flex;align-items:center;justify-content:center;text-decoration:none;text-align:center;background:#24547a;border:1px solid #5b91bd;border-radius:8px;padding:8px;color:#fff;font-size:12px;font-weight:700}
+.moreProviders{font-size:12px;width:100%;padding:7px}
+.providerExtra{display:none;flex-wrap:wrap;gap:5px}.providerExtra.open{display:flex}
+.providerExtra a{font-size:10px;padding:6px 8px;margin:0}
+@media(max-width:650px){.libraryGrid{grid-template-columns:1fr}#libraryPanel .cloudCard{width:100%;max-height:94dvh;border-radius:14px}}
+
+.cloudCard h2{margin:0 0 12px}.cloudCard input{width:100%;padding:12px;border-radius:8px;border:1px solid var(--line);background:#0c1422;color:var(--text);margin:8px 0}
+.cloudCard button{margin:5px 5px 5px 0}.cloudMessage{font-size:13px;color:#b8d8f6;line-height:1.5;min-height:22px}
+.libraryRow{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px 10px;padding:14px 0;border-bottom:1px solid var(--line);align-items:center}
+.libraryRow>b{font-size:15px;grid-column:1;grid-row:1}.libraryRow>.removeItem{grid-column:2;grid-row:1}.libraryRow>.libraryMeta{font-size:12px;color:var(--muted);grid-column:1/-1;grid-row:2}
+.libraryRow select{grid-column:1;grid-row:3}.libraryRow>.watchLookup{grid-column:2;grid-row:3;justify-self:end}.libraryRow>.providerSearches{grid-column:1/-1;grid-row:4;padding:8px 0 12px;border-top:1px solid var(--line);border-bottom:0}
+#programmeMessage{font-size:13px;color:#a9d8b5}
+
+.watchLookup{display:inline-block;margin:8px 10px 0 0;padding:8px 12px;border:1px solid #52749a;border-radius:8px;color:#d9eaff;text-decoration:none;background:#203650;font-weight:600}.watchLookup:hover{background:#2c4b70}
+.providerSearches{grid-column:1/-1;padding:9px 0 12px;border-bottom:1px solid var(--line)}
+.providerHeading{font-size:12px;font-weight:700;color:var(--text);margin:2px 0 5px}
+.providerLookup{font-size:11px;padding:7px 9px;margin:5px 6px 0 0}
+.providerNote{font-size:10px;color:var(--muted);line-height:1.4;margin-top:7px}
+
+/* V11 visual library and title grouping */
+.libraryGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;align-items:start}
+.libraryRow{display:flex!important;flex-direction:column;align-items:stretch!important;gap:8px!important;padding:10px!important;background:var(--panel2);border:1px solid var(--line)!important;border-radius:12px;min-width:0}
+.libraryPoster{height:116px;border-radius:9px;position:relative;display:flex;flex-direction:column;justify-content:space-between;padding:10px;background:linear-gradient(135deg,#244b70,#17253a 62%,#36594f);border:1px solid #55718d;overflow:hidden;background-size:cover;background-position:center}.libraryPoster:after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,#07111a22 15%,#07111acc 100%);pointer-events:none}.libraryPoster>*{position:relative;z-index:1}
+.libraryPoster .posterChannel{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:#d4e4f5}
+.libraryPoster .posterTitle{font-size:18px;line-height:1.08;font-weight:800;text-shadow:0 2px 8px #0008;max-width:95%}
+.libraryTitle{font-size:14px;font-weight:750;line-height:1.2}
+.librarySummary{font-size:11px;color:var(--muted)}
+.libraryEpisodes{display:none;border-top:1px solid var(--line);padding-top:8px;width:100%}
+.libraryEpisodes.open{display:block}
+.libraryEpisode{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px;padding:7px 0;border-bottom:1px solid #34445a;align-items:center}
+.libraryEpisode small{color:var(--muted);font-size:10px;grid-column:1/-1}
+.libraryEpisode select{font-size:11px;max-width:140px}
+.libraryEpisode button{font-size:10px;padding:5px 7px}
+.libraryCardActions{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px;width:100%}
+.libraryCardActions .primaryProvider{min-width:0}
+.libraryCardActions .moreProviders{width:auto;white-space:nowrap}
+@media(min-width:900px){.libraryGrid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:650px){.libraryGrid{grid-template-columns:repeat(2,minmax(0,1fr))}#libraryPanel .cloudCard{width:100%;max-height:94dvh;border-radius:14px}.libraryPoster{height:100px}.libraryPoster .posterTitle{font-size:15px}}
+
+
+.libraryTools{display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding:10px 0 12px;position:sticky;top:58px;z-index:4;background:var(--panel)}
+.libraryTools input,.libraryTools select{background:var(--panel2);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:9px 10px;min-width:130px;flex:1}
+.libraryTools input{flex:2;min-width:140px}
+.libraryTools .clearSearch{flex:0 0 auto;min-width:42px;padding:9px 12px;font-weight:800}
+@media(min-width:900px){.libraryGrid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(min-width:650px) and (max-width:899px){.libraryGrid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:649px){.libraryGrid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.libraryCount{font-size:12px;color:var(--muted);padding:0 0 8px}
+</style></head><body>
+<header><div class="brand"><div><h1>GRANARY TV</h1><div class="sub">Your rolling 7-day television guide</div></div><div class="actions"><button id="refresh">↻ Refresh</button><button id="manage">＋ Channels</button></div></div><div class="daysbar"><button id="prev">‹</button><div class="days" id="days"></div><button id="next">›</button></div></header>
+<div class="cloudBar"><button id="signInBtn">Sign in / Password</button><button id="signOutBtn" style="display:none">Sign out</button><button id="libraryBtn" disabled>My Library</button><button id="servicesBtn" disabled>My Streaming Services</button><span id="cloudStatus" class="cloudStatus">Connecting to Granary TV library…</span></div>
+<div class="toolbar"><label>START</label><select id="start"></select><label>END</label><select id="end"></select><span class="status" id="status">Finding UK channels…</span></div><div class="notice" id="notice"></div>
+<main class="guide-wrap"><div class="guide" id="guide"></div></main><footer>Listings supplied by onTVnow public UK TV listings feed. Programme data is not a video stream; coverage depends on the source.</footer>
+<div class="modal" id="modal"><div class="sheet"><button class="close" id="close">Close</button><h2 id="modalTitle">Channels</h2><p id="modalHelp">Tap a channel to remove it, or add another channel from the listings directory.</p><div class="chips" id="chips"></div><select id="addSelect"></select><button id="addButton">Add channel</button></div></div>
+
+<div class="cloudPanel" id="authPanel"><div class="cloudCard">
+  <button onclick="document.getElementById('authPanel').classList.remove('open')">Close</button>
+  <h2>Granary TV account</h2><p>Use your existing account on both devices. Set a password here on the iPad first, then use it to sign in on the TV.</p>
+  <input id="authEmail" type="email" autocomplete="email" placeholder="Your email address">
+  <input id="authPassword" type="password" autocomplete="current-password" placeholder="Password (at least 8 characters)">
+  <button id="passwordSignInBtn">Sign in with password</button>
+  <button id="setPasswordBtn" style="display:none">Set / change my password</button>
+  <button id="sendLinkBtn">Email me a sign-in link (backup)</button><div id="authMessage" class="cloudMessage"></div>
+</div></div>
+<div class="cloudPanel" id="servicesPanel"><div class="cloudCard">
+  <button onclick="document.getElementById('servicesPanel').classList.remove('open')">Close</button>
+  <h2>My Streaming Services</h2><p>Choose the services you use. These preferences follow your Granary TV account on both the iPad and television.</p>
+  <div id="servicesChoices" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:14px 0"></div>
+  <button id="saveServicesBtn">Save my services</button><div id="servicesMessage" class="cloudMessage"></div>
+</div></div>
+<div class="cloudPanel" id="libraryPanel"><div class="cloudCard">
+  <div class="libraryHead"><h2>My Granary TV Library</h2><div style="display:flex;gap:8px;align-items:center"><a href="link-test-bench.html" target="_blank" rel="noopener" class="moreProviders" style="text-decoration:none;padding:10px 14px">Link Test Bench ↗</a><button onclick="document.getElementById('libraryPanel').classList.remove('open')">Close ✕</button></div></div>
+  <div id="libraryContent">Loading…</div>
+</div></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.89.0/dist/umd/supabase.js"></script>
+<script>
+// Granary TV personal library (Supabase)
+const GRANARY_SUPABASE_URL = 'https://tbnjyytzoyvdymdpimko.supabase.co';
+const GRANARY_SUPABASE_KEY = 'sb_publishable_OfPXxDIZPgew-S5XD51l9A__uChIZLC';
+let granaryClient = null, currentUser = null, selectedProgramme = null;
+const GRANARY_SERVICES = ["BBC iPlayer", "ITVX", "Channel 4", "Channel 5", "Amazon Prime Video", "Disney+", "Sky / NOW", "Apple TV+"];
+const GRANARY_SERVICE_URLS = {
+  "BBC iPlayer":"https://www.bbc.co.uk/iplayer",
+  "ITVX":"https://www.itv.com/",
+  "Channel 4":"https://www.channel4.com/",
+  "Channel 5":"https://www.channel5.com/",
+  "Amazon Prime Video":"https://www.primevideo.com/",
+  "Disney+":"https://www.disneyplus.com/",
+  "Sky / NOW":"https://www.nowtv.com/",
+  "Apple TV+":"https://tv.apple.com/"
+};
+// Provider-specific title searches. These are search results, not claims of confirmed availability.
+const GRANARY_PROVIDER_SEARCH_DOMAINS = {
+  "BBC iPlayer":"bbc.co.uk/iplayer", "ITVX":"itv.com/watch",
+  "Channel 4":"channel4.com/programmes", "Channel 5":"channel5.com",
+  "Amazon Prime Video":"primevideo.com", "Disney+":"disneyplus.com",
+  "Sky / NOW":"nowtv.com", "Apple TV+":"tv.apple.com"
+};
+function granaryProviderSearchUrl(service,title){
+  const domain=GRANARY_PROVIDER_SEARCH_DOMAINS[service];
+  if(!domain)return 'https://www.google.com/search?q='+encodeURIComponent('watch '+title+' '+service);
+  return 'https://www.google.com/search?q='+encodeURIComponent('site:'+domain+' "'+title+'"');
+}
+const GRANARY_KNOWN_PROGRAMME_URLS = {
+  "the bidding room": {"BBC iPlayer":"https://www.bbc.co.uk/iplayer/episodes/m000jygn"},
+  "children in need 2026": {"BBC iPlayer":"https://www.bbc.co.uk/programmes/b008dk4b"},
+  "the great british bake off": {"Channel 4":"https://www.channel4.com/programmes/the-great-british-bake-off"},
+  "strictly come dancing": {"BBC iPlayer":"https://www.bbc.co.uk/iplayer/episodes/b006m8dq"}
+};
+const GRANARY_POSTER_IMAGES = {
+  "the bidding room": "https://ichef.bbci.co.uk/images/ic/1200x675/p0jwc8bx.jpg",
+  "children in need 2026": "https://ichef.bbci.co.uk/images/ic/1200x675/p01l664h.jpg"
+};
+// Automatic programme metadata: TVmaze public API (no API key; CC BY-SA attribution required).
+const GRANARY_TVMAZE_API='https://api.tvmaze.com';
+let granaryMetadataByTitle={}, granaryMetadataSetupReady=false, granaryMetadataBusy=new Set();
+function granaryNormaliseTitle(value){return String(value||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/&/g,'and').replace(/[^a-z0-9]/g,'');}
+async function loadGranaryMetadata(){
+  const {data,error}=await granaryClient.from('programme_metadata').select('*');
+  if(error){granaryMetadataSetupReady=false;return error;}
+  granaryMetadataSetupReady=true;granaryMetadataByTitle={};(data||[]).forEach(row=>granaryMetadataByTitle[row.normalized_title]=row);return null;
+}
+async function resolveGranaryMetadata(title){
+  const key=granaryNormaliseTitle(title);if(!key||granaryMetadataBusy.has(key)||granaryMetadataByTitle[key])return;
+  granaryMetadataBusy.add(key);
+  try{
+    const response=await fetch(GRANARY_TVMAZE_API+'/search/shows?q='+encodeURIComponent(title),{headers:{Accept:'application/json'}});
+    if(!response.ok)throw new Error('TVmaze lookup '+response.status);
+    const results=await response.json();
+    const exact=(results||[]).filter(x=>granaryNormaliseTitle(x.show?.name)===key);
+    let row={user_id:currentUser.id,normalized_title:key,search_title:title,source:'TVmaze',match_status:'needs_review',source_id:null,matched_title:null,image_url:null,summary:null,source_url:null,genres:[]};
+    if(exact.length===1){const s=exact[0].show;row={...row,match_status:'matched',source_id:s.id,matched_title:s.name,image_url:s.image?.original||s.image?.medium||null,summary:String(s.summary||'').replace(/<[^>]*>/g,' ').replace(/\\s+/g,' ').trim()||null,source_url:s.url||null,genres:s.genres||[],premiered:s.premiered||null};}
+    const {data,error}=await granaryClient.from('programme_metadata').upsert(row,{onConflict:'user_id,normalized_title'}).select().single();
+    if(!error&&data)granaryMetadataByTitle[key]=data;
+  }catch(e){console.warn('Granary TV metadata lookup failed for',title,e);}
+  finally{granaryMetadataBusy.delete(key);}
+}
+async function startGranaryMetadataLookups(items){
+  if(!granaryMetadataSetupReady||!currentUser)return;
+  const titles=[...new Set((items||[]).map(x=>String(x.title||'').trim()).filter(Boolean))];
+  const missing=titles.filter(t=>!granaryMetadataByTitle[granaryNormaliseTitle(t)]);
+  if(!missing.length)return;
+  const before=Object.keys(granaryMetadataByTitle).length;
+  await Promise.all(missing.slice(0,4).map(resolveGranaryMetadata));
+  if(Object.keys(granaryMetadataByTitle).length>before)openLibrary();
+}
+
+function addProviderSearchLinks(host,title){
+  const services=Array.isArray(currentUser?.user_metadata?.streaming_services)?currentUser.user_metadata.streaming_services:GRANARY_SERVICES;
+  const wrap=document.createElement('div');wrap.className='providerSearches';
+  const heading=document.createElement('div');heading.className='providerHeading';heading.textContent='Open your streaming services';wrap.append(heading);
+  const known=GRANARY_KNOWN_PROGRAMME_URLS[String(title||'').trim().toLowerCase()]||{};
+  services.forEach(name=>{
+    const url=known[name]||GRANARY_SERVICE_URLS[name];if(!url)return;
+    const a=document.createElement('a');
+    a.className='watchLookup providerLookup';a.textContent=known[name]?'Open '+name+' – '+title:'Open '+name;
+    a.href=url;a.target='_blank';a.rel='noopener noreferrer';
+    a.title=known[name]?'Open the known programme page. For other titles, search within the provider.':'Open '+name+'; search for “'+title+'” there. Availability is not confirmed.';
+    wrap.append(a);
+  });
+  const note=document.createElement('div');note.className='providerNote';note.textContent='For services without a direct programme link, search for the title after opening the service. These links do not confirm availability or subscription inclusion.';wrap.append(note);
+  host.append(wrap);
+}
+
+let selectedServices = [...GRANARY_SERVICES];
+function initGranaryCloud(){
+  if (!window.supabase || !window.supabase.createClient) {
+    $('cloudStatus').textContent = 'Connection library did not load. Check internet and refresh.';
+    return;
+  }
+  granaryClient = window.supabase.createClient(GRANARY_SUPABASE_URL, GRANARY_SUPABASE_KEY, {
+    auth:{autoRefreshToken:true,persistSession:true,detectSessionInUrl:true}
+  });
+  granaryClient.auth.getSession().then(({data})=>{
+    currentUser=data.session?.user||null; updateCloudUI();
+  });
+  granaryClient.auth.onAuthStateChange((_event,session)=>{
+    currentUser=session?.user||null; updateCloudUI();
+  });
+}
+function updateCloudUI(){
+  $('cloudStatus').textContent=currentUser ? 'Signed in: '+currentUser.email : 'Not signed in';
+  $('signInBtn').textContent=currentUser?'Account / Set password':'Sign in';$('signOutBtn').style.display=currentUser?'inline-block':'none';
+  $('libraryBtn').disabled=!currentUser;
+  $('libraryBtn').style.opacity=currentUser?'1':'.55';
+  $('servicesBtn').disabled=!currentUser;$('servicesBtn').style.opacity=currentUser?'1':'.55';
+  if(currentUser){selectedServices=Array.isArray(currentUser.user_metadata?.streaming_services)?currentUser.user_metadata.streaming_services:[...GRANARY_SERVICES];}
+}
+function openServices(){
+  if(!currentUser){$('servicesMessage').textContent='Please sign in first.';return;}
+  selectedServices=Array.isArray(currentUser.user_metadata?.streaming_services)?[...currentUser.user_metadata.streaming_services]:[...GRANARY_SERVICES];
+  const host=$('servicesChoices');host.innerHTML='';
+  GRANARY_SERVICES.forEach(name=>{const label=document.createElement('label');label.style.cssText='display:flex;align-items:center;gap:8px;padding:8px;background:var(--panel2);border-radius:8px;font-size:13px';const cb=document.createElement('input');cb.type='checkbox';cb.checked=selectedServices.includes(name);cb.onchange=()=>{selectedServices=cb.checked?[...selectedServices,name]:selectedServices.filter(x=>x!==name)};label.append(cb,document.createTextNode(name));host.append(label)});
+  $('servicesMessage').textContent='';$('servicesPanel').classList.add('open');
+}
+async function saveServices(){
+  if(!currentUser)return;
+  $('saveServicesBtn').disabled=true;$('servicesMessage').textContent='Saving…';
+  const {data,error}=await granaryClient.auth.updateUser({data:{streaming_services:selectedServices}});
+  $('saveServicesBtn').disabled=false;
+  if(error){$('servicesMessage').textContent='Could not save: '+error.message;return;}
+  currentUser=data.user||currentUser;$('servicesMessage').textContent='Saved. Your services will be available on your other signed-in devices too.';updateCloudUI();
+}
+function openAuth(){
+  if(currentUser){
+    // Signed-in users can open the panel to set/change their password; sign-out is separate.
+    $('authPanel').classList.add('open');
+    $('authEmail').value=currentUser.email||'';
+    $('authEmail').disabled=true;
+    $('setPasswordBtn').style.display='inline-block';
+    $('passwordSignInBtn').style.display='none';
+    $('sendLinkBtn').style.display='none';
+    $('authMessage').textContent='You are signed in. Choose a password to use this same account on the TV.';
+    $('authPassword').focus();
+    return;
+  }
+  $('authPanel').classList.add('open');$('authMessage').textContent='';
+  $('authEmail').disabled=false;
+  $('setPasswordBtn').style.display='none';
+  $('passwordSignInBtn').style.display='inline-block';
+  $('sendLinkBtn').style.display='inline-block';
+  $('authEmail').focus();
+}
+async function signInWithPassword(){
+  const email=$('authEmail').value.trim(), password=$('authPassword').value;
+  if(!email || !email.includes('@')){$('authMessage').textContent='Please enter a valid email address.';return;}
+  if(!password){$('authMessage').textContent='Enter your password.';return;}
+  $('passwordSignInBtn').disabled=true;$('authMessage').textContent='Signing in…';
+  const {error}=await granaryClient.auth.signInWithPassword({email,password});
+  $('passwordSignInBtn').disabled=false;
+  $('authMessage').textContent=error?'Sign-in failed: '+error.message:'Signed in successfully.';
+  if(!error)setTimeout(()=>$('authPanel').classList.remove('open'),700);
+}
+async function setAccountPassword(){
+  const password=$('authPassword').value;
+  if(password.length<8){$('authMessage').textContent='Please choose a password with at least 8 characters.';return;}
+  $('setPasswordBtn').disabled=true;$('authMessage').textContent='Saving password…';
+  const {error}=await granaryClient.auth.updateUser({password});
+  $('setPasswordBtn').disabled=false;
+  $('authMessage').textContent=error?'Could not set password: '+error.message:'Password saved. Use your email and this password to sign in on the TV.';
+  if(!error)$('authPassword').value='';
+}
+async function sendMagicLink(){
+  const email=$('authEmail').value.trim();
+  if(!email || !email.includes('@')){$('authMessage').textContent='Please enter a valid email address.';return;}
+  $('sendLinkBtn').disabled=true;$('authMessage').textContent='Sending your sign-in link…';
+  const {error}=await granaryClient.auth.signInWithOtp({
+    email,
+    options:{emailRedirectTo:location.origin+location.pathname}
+  });
+  $('sendLinkBtn').disabled=false;
+  $('authMessage').textContent=error ? error.message : 'Email sent. Open the link in this email on this device to sign in to Granary TV.';
+}
+async function addSelectedToLibrary(){
+  if(!currentUser){$('programmeMessage').textContent='Please sign in first.';return;}
+  if(!selectedProgramme)return;
+  const p=selectedProgramme.p, ch=selectedProgramme.ch;
+  const {error}=await granaryClient.from('library_items').insert({
+    user_id:currentUser.id,title:p.title,item_type:'programme',channel:ch.display,
+    description:p.description||null,start_at:p.start.toISOString(),end_at:p.end.toISOString(),
+    status:'wanted',notes:p.genre?'Genre: '+p.genre:null
+  });
+  $('programmeMessage').textContent=error ? 'Could not save: '+error.message : 'Added to your library.';
+}
+let granaryVerifiedLinksByTitle={};
+async function loadGranaryVerifiedLinks(){
+  granaryVerifiedLinksByTitle={};
+  const {data,error}=await granaryClient.from('programme_provider_links').select('*');
+  if(error){console.warn('Verified programme links unavailable:',error.message);return error;}
+  (data||[]).forEach(r=>{const key=r.normalized_title+'|'+r.service;granaryVerifiedLinksByTitle[key]=r;});
+  return null;
+}
+function getGranaryVerifiedLink(title,service){
+  const r=granaryVerifiedLinksByTitle[granaryNormaliseTitle(title)+'|'+service];
+  if(!r||!r.candidate_url||!['page_verified','playback_confirmed'].includes(r.verification_status))return null;
+  return r;
+}
+let librarySearch='',libraryStatus='all',librarySort='newest';
+async function openLibrary(){
+  if(!currentUser){openAuth();return;}
+  $('libraryPanel').classList.add('open');$('libraryContent').textContent='Loading your programmes…';
+  const {data,error}=await granaryClient.from('library_items').select('*').order('created_at',{ascending:false});
+  if(error){$('libraryContent').textContent='Could not load library: '+error.message;return;}
+  const metadataError=await loadGranaryMetadata();
+  const verifiedLinksError=await loadGranaryVerifiedLinks();
+  if(!data.length){$('libraryContent').textContent='Your library is empty. Open a programme in the guide and choose Add to My Library.';return;}
+  $('libraryContent').innerHTML='';
+  if(metadataError){const setup=document.createElement('div');setup.className='providerNote';setup.textContent='Automatic programme artwork and matching will activate after the Granary TV metadata table is installed in Supabase.';$('libraryContent').append(setup);}
+  const tools=document.createElement('div');tools.className='libraryTools';
+  const search=document.createElement('input');search.type='search';search.placeholder='Find a programme…';search.value=librarySearch;search.setAttribute('aria-label','Find a programme');
+  const status=document.createElement('select');status.setAttribute('aria-label','Filter by status');[['all','All statuses'],['wanted','Wanted'],['scheduled','Scheduled'],['available','Available'],['watching','Watching'],['finished','Finished']].forEach(([v,l])=>{const o=document.createElement('option');o.value=v;o.textContent=l;status.append(o)});status.value=libraryStatus;
+  const sort=document.createElement('select');sort.setAttribute('aria-label','Sort library');[['newest','Recently added'],['oldest','Oldest added'],['title','Title A–Z']].forEach(([v,l])=>{const o=document.createElement('option');o.value=v;o.textContent=l;sort.append(o)});sort.value=librarySort;
+  const apply=()=>{librarySearch=search.value.trim();libraryStatus=status.value;librarySort=sort.value;openLibrary()};
+  search.addEventListener('keydown',e=>{if(e.key==='Enter')apply()});status.onchange=apply;sort.onchange=apply;
+  const clearBtn=document.createElement('button');clearBtn.className='clearSearch';clearBtn.type='button';clearBtn.textContent='×';clearBtn.title='Clear search and show the full library';clearBtn.setAttribute('aria-label','Clear search');clearBtn.onclick=()=>{search.value='';librarySearch='';libraryStatus=status.value;librarySort=sort.value;openLibrary()};
+  const searchBtn=document.createElement('button');searchBtn.textContent='Find';searchBtn.onclick=apply;
+  tools.append(search,clearBtn,status,sort,searchBtn);$('libraryContent').append(tools);
+  let visibleData=data.filter(item=>(libraryStatus==='all'||(item.status||'wanted')===libraryStatus)&&(!librarySearch||String(item.title||'').toLowerCase().includes(librarySearch.toLowerCase())));
+  if(librarySort==='title')visibleData.sort((a,b)=>String(a.title||'').localeCompare(String(b.title||'')));
+  else visibleData.sort((a,b)=>{const av=new Date(a.created_at||a.start_at||0).getTime(),bv=new Date(b.created_at||b.start_at||0).getTime();return librarySort==='oldest'?av-bv:bv-av});
+  const groups=new Map();visibleData.forEach(item=>{const key=String(item.title||'Programme').trim().toLowerCase();if(!groups.has(key))groups.set(key,[]);groups.get(key).push(item)});
+  const count=document.createElement('div');count.className='libraryCount';count.textContent=groups.size+' programme'+(groups.size===1?'':'s')+' · '+visibleData.length+' saved entr'+(visibleData.length===1?'y':'ies');$('libraryContent').append(count);
+  if(!visibleData.length){const empty=document.createElement('p');empty.textContent='No programmes match this search or status filter.';$('libraryContent').append(empty);return;}
+  const grid=document.createElement('div');grid.className='libraryGrid';$('libraryContent').append(grid);
+  // Repeated saved broadcasts with the same title remain grouped in one tile.
+  [...groups.values()].forEach(items=>{
+    const item=items[0], titleText=item.title||'Programme';
+    const row=document.createElement('section');row.className='libraryRow';
+    const poster=document.createElement('div');poster.className='libraryPoster';
+    const posterUrl=GRANARY_POSTER_IMAGES[String(titleText).trim().toLowerCase()];if(posterUrl){poster.style.backgroundImage='linear-gradient(180deg,#07111a22 15%,#07111acc 100%),url(\"'+posterUrl+'\")';poster.setAttribute('role','img');poster.setAttribute('aria-label',titleText+' programme artwork');}
+    const ch=document.createElement('span');ch.className='posterChannel';ch.textContent=item.channel||'Granary TV';
+    const pt=document.createElement('span');pt.className='posterTitle';pt.textContent=titleText;
+    poster.append(ch,pt);
+    const title=document.createElement('div');title.className='libraryTitle';title.textContent=titleText;
+    const summary=document.createElement('div');summary.className='librarySummary';summary.textContent=items.length>1?items.length+' saved broadcasts / entries':(item.channel||'Saved programme');
+    const service=providerForChannel(item.channel);
+    const actions=document.createElement('div');actions.className='libraryCardActions';
+    const primary=document.createElement('a');primary.className='primaryProvider';primary.target='_blank';primary.rel='noopener noreferrer';
+    const known=GRANARY_KNOWN_PROGRAMME_URLS[String(titleText).trim().toLowerCase()]||{};
+    const verifiedPrimary=getGranaryVerifiedLink(titleText,service);
+    primary.href=verifiedPrimary?.candidate_url||known[service]||granaryProviderSearchUrl(service,titleText);
+    primary.textContent=verifiedPrimary?(verifiedPrimary.verification_status==='playback_confirmed'?'Play on ':'Open ')+service:(known[service]?'Open '+service:'Search '+service+' for '+titleText);
+    primary.title=verifiedPrimary?'Saved '+verifiedPrimary.verification_status.replaceAll('_',' ')+' link'+(verifiedPrimary.checked_at?' · checked '+new Date(verifiedPrimary.checked_at).toLocaleDateString('en-GB'):''):(known[service]?'Programme-specific link configured':'Searches for this exact programme; availability is not confirmed');
+    const more=document.createElement('button');more.className='moreProviders';more.textContent='Other services ▾';
+    const extra=document.createElement('div');extra.className='providerExtra';
+    const services=Array.isArray(currentUser?.user_metadata?.streaming_services)?currentUser.user_metadata.streaming_services:GRANARY_SERVICES;
+    services.filter(n=>n!==service).forEach(name=>{const a=document.createElement('a');a.className='watchLookup providerLookup';const verified=getGranaryVerifiedLink(titleText,name);a.textContent=verified?'Open verified '+name:'Search '+name+' for '+titleText;a.href=verified?.candidate_url||known[name]||granaryProviderSearchUrl(name,titleText);a.title=verified?'Saved '+verified.verification_status.replaceAll('_',' '):'Search result; availability not confirmed';a.target='_blank';a.rel='noopener noreferrer';extra.append(a)});
+    more.onclick=()=>{extra.classList.toggle('open');more.textContent=extra.classList.contains('open')?'Other services ▴':'Other services ▾'};
+    actions.append(primary,more);
+    const episodeToggle=document.createElement('button');episodeToggle.className='moreProviders';episodeToggle.textContent=items.length>1?'Show '+items.length+' saved entries ▾':'Show saved details ▾';
+    const episodes=document.createElement('div');episodes.className='libraryEpisodes';
+    items.forEach(entry=>{
+      const ep=document.createElement('div');ep.className='libraryEpisode';
+      const epTitle=document.createElement('strong');epTitle.textContent=entry.item_type==='episode'?'Episode':(entry.channel||'Broadcast');
+      const epMeta=document.createElement('small');epMeta.textContent=[entry.start_at?new Date(entry.start_at).toLocaleString('en-GB',{dateStyle:'medium',timeStyle:'short'}):'',entry.status||'wanted'].filter(Boolean).join(' · ');
+      const status=document.createElement('select');['wanted','scheduled','available','watching','finished'].forEach(v=>{const o=document.createElement('option');o.value=v;o.textContent=v[0].toUpperCase()+v.slice(1);status.append(o)});status.value=entry.status||'wanted';
+      status.onchange=async()=>{const {error}=await granaryClient.from('library_items').update({status:status.value,updated_at:new Date().toISOString()}).eq('id',entry.id);if(error)alert(error.message);else epMeta.textContent=[entry.start_at?new Date(entry.start_at).toLocaleString('en-GB',{dateStyle:'medium',timeStyle:'short'}):'',status.value].filter(Boolean).join(' · ')};
+      const del=document.createElement('button');del.textContent='Remove';del.onclick=async()=>{if(!confirm('Remove '+titleText+' from your library?'))return;const {error}=await granaryClient.from('library_items').delete().eq('id',entry.id);if(error){alert(error.message);return}ep.remove();const remaining=episodes.querySelectorAll('.libraryEpisode').length;summary.textContent=remaining?remaining+' saved broadcasts / entries':'No saved entries';if(!remaining)row.remove();};
+      ep.append(epTitle,status,epMeta,del);episodes.append(ep);
+    });
+    episodeToggle.onclick=()=>{episodes.classList.toggle('open');episodeToggle.textContent=episodes.classList.contains('open')?'Hide saved entries ▴':'Show '+items.length+' saved entries ▾'};
+    const meta=granaryMetadataByTitle[granaryNormaliseTitle(titleText)];
+    if(meta?.match_status==='matched'){if(meta.image_url&&!posterUrl){poster.style.backgroundImage='linear-gradient(180deg,#07111a22 15%,#07111acc 100%),url("'+meta.image_url+'")';poster.setAttribute('role','img');poster.setAttribute('aria-label',titleText+' programme artwork');}if(meta.summary){const synopsis=document.createElement('div');synopsis.className='librarySummary';synopsis.textContent=meta.summary;row.append(synopsis);}const credit=document.createElement('div');credit.className='providerNote';credit.textContent='Programme information: TVmaze';row.append(credit);}
+    else if(meta?.match_status==='needs_review'){const pending=document.createElement('div');pending.className='providerNote';pending.textContent='Programme match needs checking — no automatic link has been assigned.';row.append(pending);}
+    row.append(poster,title,summary,actions,extra,episodeToggle,episodes);grid.append(row);
+  });
+  if(granaryMetadataSetupReady)startGranaryMetadataLookups(data);
+}
+
+function providerForChannel(channel){
+ const c=String(channel||'').toLowerCase();
+ if(c.includes('bbc'))return 'BBC iPlayer';
+ if(c.includes('itv'))return 'ITVX';
+ if(c.includes('channel 4')||c.includes('e4')||c.includes('more4')||c.includes('film4'))return 'Channel 4';
+ if(c.includes('channel 5')||c.includes('5star')||c.includes('5action')||c.includes('5usa'))return 'Channel 5';
+ if(c.includes('sky')||c.includes('now'))return 'Sky / NOW';
+ return 'BBC iPlayer';
+}
+
+document.addEventListener('DOMContentLoaded',()=>{
+  $('signInBtn').onclick=openAuth;$('servicesBtn').onclick=openServices;$('saveServicesBtn').onclick=saveServices;$('signOutBtn').onclick=async()=>{await granaryClient.auth.signOut();currentUser=null;updateCloudUI()};$('libraryBtn').onclick=openLibrary;$('sendLinkBtn').onclick=sendMagicLink;$('passwordSignInBtn').onclick=signInWithPassword;$('setPasswordBtn').onclick=setAccountPassword;
+  $('authEmail').addEventListener('keydown',e=>{if(e.key==='Enter')signInWithPassword()});$('authPassword').addEventListener('keydown',e=>{if(e.key==='Enter'){if(currentUser)setAccountPassword();else signInWithPassword()}});
+  initGranaryCloud();
+});
+</script>
+<script>
+const API='https://www.ontvnow.co.uk/api/v1';
+const DEFAULTS=['BBC One','BBC Two','ITV1','Channel 4','Channel 5','Sky Atlantic','Sky Witness','Sky Comedy','Sky Documentaries','Sky Crime'];
+let directory=[],channels=[],dataByChannel={},weekOffset=0,selected=0,startHour=6,endHour=24;
+function todayStart(){const d=new Date();return Math.floor((d.getHours()*60+d.getMinutes())/30)/2}
+function syncNow(){if(weekOffset===0&&selected===0){startHour=todayStart();$('start').value=String(startHour)}}
+const $=id=>document.getElementById(id);
+const pad=n=>String(n).padStart(2,'0');
+const dateFor=i=>{let d=new Date();d.setHours(0,0,0,0);d.setDate(d.getDate()+weekOffset*7+i);return d};
+const dateKey=d=>`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+const dateText=d=>d.toLocaleDateString('en-GB',{weekday:'short',day:'numeric'});
+const norm=s=>String(s||'').toLowerCase().replace(/[^a-z0-9]/g,'');
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function isoLocal(d){return `${dateKey(d)}T${pad(d.getHours())}:${pad(d.getMinutes())}:00${-d.getTimezoneOffset()>=0?'+':'-'}${pad(Math.floor(Math.abs(d.getTimezoneOffset())/60))}:${pad(Math.abs(d.getTimezoneOffset())%60)}`}
+function getArr(j){if(Array.isArray(j))return j;for(const k of ['data','channels','listings','results','items'])if(Array.isArray(j?.[k]))return j[k];return []}
+async function getJSON(url){const r=await fetch(url,{headers:{Accept:'application/json'}});if(!r.ok)throw Error('HTTP '+r.status+' from listings feed');return r.json()}
+function channelLabel(c){return c.name||c.title||c.channel_name||c.display_name||''}
+function matchChannel(wanted,c){
+ const n=norm(channelLabel(c)),w=norm(wanted);
+ if(w==='bbcone'||w==='bbc1')return n==='bbcone'||n==='bbc1'||n.startsWith('bbconeyorkshire')||n.startsWith('bbconeyorkslincs')||n.startsWith('bbc1');
+ if(w==='bbctwo')return n==='bbctwo'||n.startsWith('bbctwo');
+ if(w==='itv1')return n==='itv1'||n.startsWith('itv1');
+ if(w==='channel4')return n==='channel4'||n.startsWith('channel4');
+ if(w==='channel5')return n==='channel5'||n==='5'||n.startsWith('channel5')||n==='5hd';
+ if(w.startsWith('sky'))return n.startsWith(w);
+ return n===w || n.startsWith(w);
+}
+function dateOf(v){if(!v)return null;let d=new Date(v);if(!Number.isNaN(+d))return d;return null}
+function normalize(p){
+ const s=dateOf(p.start||p.start_time||p.starts_at||p.start_datetime||p.airtime||p.date_start);
+ const e=dateOf(p.end||p.end_time||p.ends_at||p.stop||p.stop_time||p.end_datetime||p.date_end);
+ if(!s)return null;const end=e||new Date(+s+(Number(p.duration||p.runtime||30)*60000));
+ return {title:p.title||p.name||p.programme||p.program_name||'Programme',start:s,end,description:p.description||p.summary||p.synopsis||'',genre:p.genre||p.category||p.type||'',url:p.url||p.link||''};
+}
+function renderDays(){const el=$('days');el.innerHTML='';for(let i=0;i<7;i++){const d=dateFor(i),b=document.createElement('button');b.className='day'+(i===selected?' active':'');b.innerHTML=`${dateText(d)}<small>${weekOffset===0&&i===0?'TODAY':d.toLocaleDateString('en-GB',{month:'short'})}</small>`;b.onclick=()=>{selected=i;if(weekOffset===0&&i===0)syncNow();else {startHour=6;$('start').value='6'}renderDays();render()};el.append(b)}}
+function render(){
+ const d=dateFor(selected),key=dateKey(d),g=$('guide');g.innerHTML='';
+ const slots=Math.ceil(endHour-startHour);
+ const head=document.createElement('div');head.className='timehead';head.innerHTML=`<div class="corner">CHANNEL</div><div class="hours" style="--hours:${slots}">${Array.from({length:slots},(_,i)=>{const m=Math.round((startHour+i)*60);return `<div>${pad(Math.floor(m/60))}:${pad(m%60)}</div>`}).join('')}</div>`;g.append(head);
+ let count=0;
+ channels.forEach(ch=>{
+  const row=document.createElement('div');row.className='channel-row';const lab=document.createElement('div');lab.className='channel';lab.innerHTML=`<strong>${esc(ch.display)}</strong><small>${ch.id?'Programme listings':'Not in feed'}</small>`;
+  const line=document.createElement('div');line.className='timeline';line.style.setProperty('--hours',slots);
+  (dataByChannel[ch.id]||[]).filter(p=>dateKey(p.start)===key).forEach(p=>{
+   const from=startHour*60,to=endHour*60,a=p.start.getHours()*60+p.start.getMinutes(),b=p.end.getHours()*60+p.end.getMinutes()+(dateKey(p.end)!==key?1440:0);
+   if(b<=from||a>=to)return;const left=Math.max(0,(a-from)/(to-from)*100),right=Math.min(to,b);
+   const btn=document.createElement('button');btn.className='program';btn.style.left=left+'%';btn.style.width=Math.max(.8,(right-Math.max(a,from))/(to-from)*100)+'%';
+   btn.innerHTML=`<b>${esc(p.title)}</b><span>${p.start.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})}–${p.end.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})}</span>`;btn.onclick=()=>showProgramme(p,ch);line.append(btn);count++;
+  });
+  if(weekOffset===0&&selected===0){
+   const now=new Date(),minute=now.getHours()*60+now.getMinutes(),from=startHour*60,to=endHour*60;
+   if(minute>=from&&minute<to){
+    const marker=document.createElement('div');marker.className='now-line';marker.style.left=((minute-from)/(to-from)*100)+'%';
+    if(channels[0]===ch){const tag=document.createElement('span');tag.textContent='NOW';marker.append(tag)}
+    line.append(marker);
+   }
+  }
+  row.append(lab,line);g.append(row);
+ });
+ if(!count){const e=document.createElement('div');e.className='empty';e.textContent='No programmes were returned for this date. Try another date or refresh the listings.';g.append(e)}
+}
+function showProgramme(p,ch){
+ $('modalTitle').textContent=p.title;
+ const genre=p.genre||p.category||p.type||'Genre not supplied';
+ $('modalHelp').innerHTML=`<b>${esc(ch.display)}</b><br>${p.start.toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'})}<br>${p.start.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})}–${p.end.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})}<br><b>Genre:</b> ${esc(genre)}<hr style="border:0;border-top:1px solid #40516a;margin:12px 0"><b>Programme details</b><p>${esc(p.description||'No further programme description is available from the listings provider.')}</p>`;
+ $('chips').style.display='none';$('addSelect').style.display='none';$('addButton').style.display='none';
+ $('modalHelp').querySelectorAll('.providerSearches').forEach(el=>el.remove());
+ addProviderSearchLinks($('modalHelp'),p.title);
+ selectedProgramme={p,ch};
+ let saveBtn=document.getElementById('addLibraryBtn');
+ if(!saveBtn){saveBtn=document.createElement('button');saveBtn.id='addLibraryBtn';saveBtn.textContent='＋ Add to My Library';$('modalHelp').after(saveBtn);const msg=document.createElement('div');msg.id='programmeMessage';saveBtn.after(msg);saveBtn.onclick=addSelectedToLibrary;}
+ $('programmeMessage').textContent='';saveBtn.style.display='inline-block';
+ $('modal').classList.add('open')
+}
+function openManage(){const saveBtn=document.getElementById('addLibraryBtn');if(saveBtn)saveBtn.style.display='none';const msg=document.getElementById('programmeMessage');if(msg)msg.textContent='';$('modalTitle').textContent='Manage channels';$('modalHelp').textContent='Tap a channel to remove it, or add another channel from the source directory.';$('chips').style.display='flex';$('addSelect').style.display='block';$('addButton').style.display='inline-block';$('chips').innerHTML='';channels.forEach(c=>{const b=document.createElement('button');b.className='chip';b.textContent='− '+c.display;b.onclick=()=>{channels=channels.filter(x=>x!==c);save();openManage();loadListings()};$('chips').append(b)});const used=channels.map(c=>String(c.id));$('addSelect').innerHTML='<option value="">Choose a channel…</option>'+directory.filter(c=>!used.includes(String(c.id))).map(c=>`<option value="${esc(c.id)}">${esc(channelLabel(c))}</option>`).join('');$('modal').classList.add('open')}
+function sortChannels(){
+ const preferred=['bbcone','bbctwo','itv1','channel4','channel5','skyatlantic'];
+ channels.sort((a,b)=>{
+  const rank=x=>{const n=norm(x.display);if(n.includes('bbcone'))return 0;if(n.includes('bbctwo'))return 1;if(n==='itv1')return 2;if(n.includes('channel4'))return 3;if(n.includes('channel5'))return 4;if(n.includes('skyatlantic'))return 5;if(n.includes('skywitness'))return 6;if(n.includes('skycomedy'))return 7;if(n.includes('skydocumentaries'))return 8;if(n.includes('skycrime'))return 9;return 10};
+  return rank(a)-rank(b)||a.display.localeCompare(b.display);
+ });
+}
+function save(){localStorage.setItem('agrid-channel-ids',JSON.stringify(channels))}
+async function loadDirectory(){
+ const j=await getJSON(API+'/channels');directory=getArr(j);
+ if(!directory.length)throw Error('The listings service returned an empty channel directory.');
+ channels=JSON.parse(localStorage.getItem('agrid-channel-ids')||'null')||DEFAULTS.map(name=>{const c=directory.find(x=>matchChannel(name,x));return {id:c?.id??null,display:name,sourceName:c?channelLabel(c):name}});
+ // Add newly supported default channels to existing saved selections without removing user choices.
+ DEFAULTS.forEach(name=>{if(!channels.some(ch=>norm(ch.display)===norm(name))){const c=directory.find(x=>matchChannel(name,x));channels.push({id:c?.id??null,display:name,sourceName:c?channelLabel(c):name});}});
+ // Always restore BBC Two if the browser has lost the saved channel selection.
+ if(!channels.some(ch=>norm(ch.display)==='bbctwo')){
+  const c=directory.find(x=>matchChannel('BBC Two',x));
+  channels.push({id:c?.id??null,display:'BBC Two',sourceName:c?channelLabel(c):'BBC Two'});
+ }
+ // Re-resolve any stored null channels if the directory now contains a match.
+ channels=channels.map(ch=>{if(ch.id!=null)return ch;const c=directory.find(x=>matchChannel(ch.display,x));return c?{...ch,id:c.id,sourceName:channelLabel(c)}:ch});
+ sortChannels();save();
+}
+async function loadListings(){
+ $('status').textContent='Loading seven days…';$('notice').style.display='none';dataByChannel={};
+ const from=dateFor(0),to=dateFor(7);to.setSeconds(0,0);to.setMinutes(to.getMinutes()-1);
+ const active=channels.filter(c=>c.id!=null);let errors=[];
+ await Promise.all(active.map(async ch=>{
+  try{
+   const params=new URLSearchParams({channel_id:String(ch.id),from:isoLocal(from),to:isoLocal(to),limit:'100'});
+   let all=[];
+   for(let page=1;page<=10;page++){params.set('page',String(page));const j=await getJSON(API+'/listings?'+params.toString());const arr=getArr(j);all.push(...arr);const meta=j.meta||j.pagination||{};const last=Number(meta.last_page||meta.total_pages||meta.pages||1);if(page>=last||arr.length<100)break}
+   dataByChannel[ch.id]=all.map(normalize).filter(Boolean);
+  }catch(e){errors.push(ch.display+': '+e.message)}
+ }));
+ render();
+ if(errors.length){$('status').textContent='Some listings unavailable';$('notice').style.display='block';$('notice').textContent=errors.join(' · ')}
+ else $('status').textContent='Listings refreshed';
+ const missing=channels.filter(c=>c.id==null).map(c=>c.display);
+ if(missing.length){$('notice').style.display='block';$('notice').textContent+=( $('notice').textContent?' · ':'')+'Not present in source directory: '+missing.join(', ')}
+}
+$('refresh').onclick=()=>{syncNow();loadListings()};$('manage').onclick=openManage;$('close').onclick=()=>$('modal').classList.remove('open');$('modal').onclick=e=>{if(e.target===$('modal'))$('modal').classList.remove('open')};
+$('addButton').onclick=()=>{const id=$('addSelect').value,c=directory.find(x=>String(x.id)===id);if(c){channels.push({id:c.id,display:channelLabel(c),sourceName:channelLabel(c)});sortChannels();save();openManage();loadListings()}};
+$('prev').onclick=()=>{weekOffset--;selected=0;startHour=6;$('start').value='6';renderDays();loadListings()};$('next').onclick=()=>{weekOffset++;selected=0;if(weekOffset===0)syncNow();else{startHour=6;$('start').value='6'}renderDays();loadListings()};
+for(let h=0;h<24;h+=0.5){const m=Math.round(h*60);$('start').add(new Option(pad(Math.floor(m/60))+':'+pad(m%60),h))};for(let h=24;h>=1;h--)$('end').add(new Option((h===24?'24':pad(h))+':00',h));$('start').value=6;$('end').value=24;syncNow();
+$('start').onchange=e=>{startHour=+e.target.value;if(startHour>=endHour){endHour=Math.min(24,startHour+6);$('end').value=endHour}render()};
+$('end').onchange=e=>{endHour=+e.target.value;if(endHour<=startHour){startHour=Math.max(0,endHour-6);$('start').value=String(startHour)}render()};
+renderDays();
+function tickLiveGuide(){
+ if(weekOffset===0&&selected===0){
+  const oldStart=startHour;syncNow();
+  if(startHour!==oldStart)render();else render();
+ }
+}
+setInterval(tickLiveGuide,30000);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden&&weekOffset===0&&selected===0){syncNow();render()}});
+(async()=>{try{await loadDirectory();await loadListings()}catch(e){$('status').textContent='Listings connection failed';$('notice').style.display='block';$('notice').textContent=e.message+' — the source may be temporarily unavailable or block browser requests.';render()}})();
+</script></body></html>
