@@ -226,7 +226,7 @@ async function granaryAutoFindLinks(title){
 let granaryAutoFillRunning=false;
 async function granaryAutoFillLibrary(items){
   if(granaryAutoFillRunning||!currentUser)return;
-  const haveLinks=new Set(Object.values(granaryVerifiedLinksByTitle).map(r=>r.normalized_title));
+  const haveLinks=new Set(Object.values(granaryVerifiedLinksByTitle).filter(r=>['page_verified','playback_confirmed'].includes(r.verification_status)).map(r=>r.normalized_title));
   const todo=[...new Set(items.map(i=>i.title))].filter(t=>{const nt=granaryNormaliseTitle(t);return !haveLinks.has(nt)&&!granaryCheckedRecently(nt)}).slice(0,10);
   if(!todo.length)return;
   granaryAutoFillRunning=true;let added=0;
