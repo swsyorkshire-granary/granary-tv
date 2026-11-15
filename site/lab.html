@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Granary TV – Deep Link Lab</title>
+<style>
+:root{color-scheme:dark}
+body{margin:0;background:#0c1422;color:#f2f6fb;font:20px system-ui,-apple-system,sans-serif}
+.wrap{max-width:1700px;margin:auto;padding:24px 36px}
+h1{margin:0 0 6px;font-size:34px}h2{margin:28px 0 10px;font-size:26px;color:#9cd}
+.sub{color:#9aabc0;font-size:18px}
+.row{display:grid;grid-template-columns:60px 1fr 160px 340px;gap:14px;align-items:center;padding:8px 10px;border-bottom:1px solid #22344d}
+.n{font-weight:800;font-size:24px;color:#ffd37b}
+.lbl b{display:block}.lbl code{font-size:15px;color:#9aabc0;word-break:break-all}
+button{font:inherit;font-size:20px;background:#2b628d;color:#fff;border:0;border-radius:10px;padding:12px 18px;cursor:pointer}
+button:focus{outline:5px solid #ffd37b;outline-offset:3px}
+.res{font-size:15px;color:#9aabc0;word-break:break-all}.ok{color:#7fe0ae}.no{color:#ff9c9c}
+.apps{font-size:15px;color:#9aabc0;columns:3}
+.warn{background:#3a2e12;color:#ffd37b;padding:12px 16px;border-radius:10px;margin:12px 0}
+a.back{color:#9cd;font-size:20px}
+</style></head><body><main class="wrap">
+<a class="back" href="tv.html">← Back to Granary TV</a>
+<h1>Deep Link Lab</h1>
+<div class="sub">Press <b>Try</b> on each numbered line. Watch what the streaming app does, press <b>Back</b> to return here, then try the next. Tell Claude the numbers that landed on the <b>channel</b> or <b>programme</b> (not just the app's home page).</div>
+<div id="notApp" class="warn" style="display:none">Open this page inside the Granary TV app on the Fire Stick (version 1.3 or later). A normal browser can't run these tests.</div>
+<div id="tests"></div>
+<h2>Apps installed on this Fire Stick</h2><div id="apps" class="apps">…</div>
+</main>
+<script>
+// Each test: [label, link, package (optional), class (optional)]
+const IPLAYER_PKG='bbc.iplayer.android', IPLAYER_DL='external.androidtv.psbwrapper.deeplinking.DeepLinkActivity';
+const GROUPS=[
+ ['BBC iPlayer – live BBC One',[
+  ['iPlayer app link','bbciplayer://www.bbc.co.uk/iplayer/mobile/channels/bbc_one'],
+  ['iPlayer short link','bbciplayer://channels/bbc_one'],
+  ['bbc:// live','bbc://iplayer/live/bbc_one'],
+  ['Web live page','https://www.bbc.co.uk/iplayer/live/bbcone'],
+  ['Web live page → iPlayer DeepLinkActivity','https://www.bbc.co.uk/iplayer/live/bbcone',IPLAYER_PKG,IPLAYER_DL],
+  ['bbc:// playback live','bbc://iplayer/playback/bbc_one/live'],
+ ]],
+ ['BBC iPlayer – Strictly Come Dancing (programme)',[
+  ['iPlayer app episodes link','bbciplayer://www.bbc.co.uk/iplayer/mobile/episodes/b006m8dq'],
+  ['bbc:// brand','bbc://iplayer/brand/b006m8dq'],
+  ['bbc:// episodes','bbc://iplayer/episodes/b006m8dq'],
+  ['Web episodes page → iPlayer DeepLinkActivity','https://www.bbc.co.uk/iplayer/episodes/b006m8dq',IPLAYER_PKG,IPLAYER_DL],
+  ['bbc:// browse (control: should open iPlayer home)','bbc://iplayer/browse'],
+ ]],
+ ['ITVX – live ITV1',[
+  ['ITV app live link','itvplayer://freeview_app/simulcast/itv'],
+  ['ITV app live link (itv1)','itvplayer://freeview_app/simulcast/itv1'],
+  ['Web live page','https://www.itv.com/watch?channel=itv'],
+  ['ITVX TV start-app link (control)','itvhomescreenchannels://com.itv.tenft.itvhub/startapp'],
+ ]],
+ ['ITVX – Vera S14 E1',[
+  ['ITV app play link (production id)','itvplayer://freeview_app/play/1_7314_0061.001'],
+  ['ITV app play link (url id)','itvplayer://freeview_app/play/1a7314a0061'],
+  ['ITVX TV playvideo link','itvhomescreenchannels://com.itv.tenft.itvhub/playvideo?productionId=1%2F7314%2F0061%23001'],
+  ['Web episode page','https://www.itv.com/watch/vera/1a7314/1a7314a0061'],
+ ]],
+ ['Channel 4 – live Channel 4',[
+  ['Web live page (reported working on Android TV)','https://www.channel4.com/now/C4'],
+  ['Channel 4 app on-now link','all4://views/on-now?channel=C4'],
+ ]],
+ ['Channel 4 – Bake Off S17 E5',[
+  ['Channel 4 app programme link','all4://views/brands?brand=the-great-british-bake-off&programme=79486-005'],
+  ['Channel 4 app brand link','all4://views/brands?brand=the-great-british-bake-off'],
+  ['Web episode page','https://www.channel4.com/programmes/the-great-british-bake-off/on-demand/79486-005'],
+ ]],
+ ['Channel 5 / My5 – live Channel 5',[
+  ['My5 app live link','my5://watch/C5'],
+  ['Web live page','https://www.channel5.com/channel/5'],
+ ]],
+];
+const app=window.GranaryApp && typeof window.GranaryApp.launch==='function' ? window.GranaryApp : null;
+if(!app) document.getElementById('notApp').style.display='block';
+let n=0;const host=document.getElementById('tests');
+GROUPS.forEach(([title,tests])=>{
+  const h=document.createElement('h2');h.textContent=title;host.append(h);
+  tests.forEach(([label,url,pkg,cls])=>{
+    n++;const row=document.createElement('div');row.className='row';
+    const handlers=app?JSON.parse(app.resolve(url)||'[]'):[];
+    const target=pkg?pkg+(cls?' (DeepLinkActivity)':''):(handlers.length?handlers.map(h=>h.split('/')[0]).filter((v,i,a)=>a.indexOf(v)===i).join(', '):'');
+    row.innerHTML=`<div class="n">${n}</div><div class="lbl"><b></b><code></code></div><div><button>Try ${n}</button></div><div class="res"></div>`;
+    row.querySelector('b').textContent=label;row.querySelector('code').textContent=url;
+    const res=row.querySelector('.res');
+    res.innerHTML=app?(target?`<span class="ok">opens in: ${target}</span>`:'<span class="no">no app claims this link</span>'):'';
+    row.querySelector('button').onclick=()=>{ if(!app)return; const r=app.launch(url,pkg||'',cls||''); res.innerHTML=(r==='started'?'<span class="ok">sent ✓</span> ':'<span class="no">'+r+'</span> ')+(target?'→ '+target:''); };
+    host.append(row);
+  });
+});
+if(app){try{const a=JSON.parse(app.apps());document.getElementById('apps').innerHTML=a.sort((x,y)=>x.label.localeCompare(y.label)).map(x=>`<div>${x.label.replace(/</g,'&lt;')} — <code>${x.pkg}</code></div>`).join('')}catch(e){}}
+else document.getElementById('apps').textContent='(only visible inside the app)';
+</script>
+<script src="js/tvnav.js?v=18e"></script>
+</body></html>

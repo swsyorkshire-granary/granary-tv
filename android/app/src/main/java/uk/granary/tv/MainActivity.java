@@ -212,6 +212,34 @@ public class MainActivity extends Activity {
         @JavascriptInterface public boolean isApp() { return true; }
         @JavascriptInterface public String version() { return BuildConfig.VERSION_NAME; }
         @JavascriptInterface public void open(String url) { runOnUiThread(() -> openExternal(Uri.parse(url))); }
+        /** Deep Link Lab: installed TV apps as JSON [{label,pkg}] */
+        @JavascriptInterface public String apps() {
+            try {
+                JSONArray out = new JSONArray(); PackageManager pm = getPackageManager(); java.util.Set<String> seen = new java.util.HashSet<>();
+                for (String cat : new String[]{"android.intent.category.LEANBACK_LAUNCHER", Intent.CATEGORY_LAUNCHER})
+                    for (ResolveInfo ri : pm.queryIntentActivities(new Intent(Intent.ACTION_MAIN).addCategory(cat), 0))
+                        if (seen.add(ri.activityInfo.packageName)) out.put(new JSONObject().put("label", String.valueOf(ri.loadLabel(pm))).put("pkg", ri.activityInfo.packageName));
+                return out.toString();
+            } catch (Exception e) { return "[]"; }
+        }
+        /** Deep Link Lab: which activities say they can open this link */
+        @JavascriptInterface public String resolve(String uri) {
+            try {
+                JSONArray out = new JSONArray();
+                for (ResolveInfo ri : getPackageManager().queryIntentActivities(new Intent(Intent.ACTION_VIEW, Uri.parse(uri)), 0))
+                    out.put(ri.activityInfo.packageName + "/" + ri.activityInfo.name);
+                return out.toString();
+            } catch (Exception e) { return "[]"; }
+        }
+        /** Deep Link Lab: fire exactly this intent (optional package / class), bypassing Granary's own routing */
+        @JavascriptInterface public String launch(String uri, String pkg, String cls) {
+            try {
+                Intent i = new Intent(Intent.ACTION_VIEW, Uri.parse(uri)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                if (pkg != null && !pkg.isEmpty()) { if (cls != null && !cls.isEmpty()) i.setClassName(pkg, cls); else i.setPackage(pkg); }
+                startActivity(i);
+                return "started";
+            } catch (Exception e) { return "error: " + e.getClass().getSimpleName() + " " + e.getMessage(); }
+        }
         @JavascriptInterface public void openWithTitle(String url, String title) { runOnUiThread(() -> { pendingTitle = title; openExternal(Uri.parse(url)); }); }
     }
 
