@@ -21,7 +21,15 @@ import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.Toast;
 
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.Set;
+import org.json.JSONArray;
+import org.json.JSONObject;
 import java.util.List;
 import java.util.Locale;
 
@@ -56,6 +64,22 @@ public class MainActivity extends Activity {
     };
 
     WebView web;
+    /** Services whose Fire TV app ignores web links: just open the app. Updated from /app-config.json on the website. */
+    final Set<String> appOnly = new HashSet<>(java.util.Arrays.asList("itv.com"));
+    String pendingTitle = null;
+
+    void loadConfig() {
+        new Thread(() -> {
+            try {
+                HttpURLConnection c = (HttpURLConnection) new URL("https://" + SITE_HOST + "/app-config.json?t=" + System.currentTimeMillis()).openConnection();
+                c.setConnectTimeout(5000); c.setReadTimeout(5000);
+                StringBuilder sb = new StringBuilder();
+                try (BufferedReader r = new BufferedReader(new InputStreamReader(c.getInputStream()))) { String l; while ((l = r.readLine()) != null) sb.append(l); }
+                JSONArray a = new JSONObject(sb.toString()).optJSONArray("appOnly");
+                if (a != null) { Set<String> n = new HashSet<>(); for (int i = 0; i < a.length(); i++) n.add(a.getString(i)); synchronized (appOnly) { appOnly.clear(); appOnly.addAll(n); } }
+            } catch (Exception ignored) { }
+        }).start();
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -106,6 +130,7 @@ public class MainActivity extends Activity {
             }
         });
 
+        loadConfig();
         if (savedInstanceState != null) web.restoreState(savedInstanceState);
         else web.loadUrl(START_URL);
     }
@@ -152,11 +177,13 @@ public class MainActivity extends Activity {
 
     void openExternal(Uri u) {
         String[] service = serviceFor(u);
+        String title = pendingTitle; pendingTitle = null;
         if (service != null) {
+            boolean deepOk; synchronized (appOnly) { deepOk = !appOnly.contains(service[0]); }
             for (String pkg : findApps(service)) {
                 // 1. deep link straight into the programme, if the app accepts it
                 Intent deep = new Intent(Intent.ACTION_VIEW, u).setPackage(pkg).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                if (deep.resolveActivity(getPackageManager()) != null) {
+                if (deepOk && deep.resolveActivity(getPackageManager()) != null) {
                     try { startActivity(deep); toast("Opening " + service[1] + "…  Press Back to return"); return; }
                     catch (ActivityNotFoundException | SecurityException ignored) { }
                 }
@@ -166,7 +193,7 @@ public class MainActivity extends Activity {
                 if (launch != null) {
                     try {
                         startActivity(launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
-                        toast("Opened " + service[1] + " — search for the programme there");
+                        toast(title != null && !title.isEmpty() ? "Opened " + service[1] + " — search for \u201C" + title + "\u201D" : "Opened " + service[1] + " — search for the programme there");
                         return;
                     } catch (ActivityNotFoundException | SecurityException ignored) { }
                 }
@@ -185,6 +212,7 @@ public class MainActivity extends Activity {
         @JavascriptInterface public boolean isApp() { return true; }
         @JavascriptInterface public String version() { return BuildConfig.VERSION_NAME; }
         @JavascriptInterface public void open(String url) { runOnUiThread(() -> openExternal(Uri.parse(url))); }
+        @JavascriptInterface public void openWithTitle(String url, String title) { runOnUiThread(() -> { pendingTitle = title; openExternal(Uri.parse(url)); }); }
     }
 
     @Override

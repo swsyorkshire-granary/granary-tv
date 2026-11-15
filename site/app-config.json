@@ -1,0 +1,4 @@
+{
+  "_note": "Read by the Granary TV Fire TV app at start-up. appOnly = services whose Fire TV app ignores web links, so Granary just opens the app.",
+  "appOnly": ["itv.com", "channel4.com"]
+}

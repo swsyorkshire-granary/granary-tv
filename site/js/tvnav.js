@@ -124,6 +124,16 @@
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();
 
+  // Inside the Fire TV app: hand service links to the app with the programme title, so it can say what to search for.
+  document.addEventListener('click', e => {
+    const a = e.target.closest && e.target.closest('a.primaryProvider, a.providerLookup, a.watchLookup');
+    if (!a || !window.GranaryApp || typeof window.GranaryApp.openWithTitle !== 'function') return;
+    const card = a.closest('.libraryRow, .modal, [data-title]');
+    const t = (a.dataset.title || (card && (card.querySelector('.libraryTitle, #modalTitle') || {}).textContent) || '').trim();
+    e.preventDefault();
+    window.GranaryApp.openWithTitle(a.href, t);
+  }, true);
+
   // Back button: close the top panel. Returns true if something was closed.
   window.granaryBack = function () {
     const layer = topLayer();
