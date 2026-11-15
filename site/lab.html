@@ -145,6 +145,11 @@ else document.getElementById('apps').textContent='(only visible inside the app)'
       // Link-related text inside the UK apps (route patterns and intent extra names)
       const RX='(?i)(deep.?link|amzn_|channel4:|my5:|itv\\.com/|bbc\\.co\\.uk/iplayer|/watch|/programmes|on-demand|simulcast|playback|/episode|brand|programmeId|productionId|episodeId|contentId|launch_?param|\\bquery\\b)';
       if(typeof GranaryApp.strings==='function'){
+        // Also any installed guide apps that already launch live channels (e.g. Channel Launcher, TV Launcher)
+        const guideApps=Object.keys(labels).filter(k=>/channel\s*launcher|tv\s*launcher/i.test(labels[k]));
+        for(const gp of guideApps){ const m=JSON.parse(GranaryApp.manifest(gp)||'{}'); await db.from('device_app_scans').insert({package:gp,app_label:labels[gp],version:m.version||null,report:m});
+          const st=JSON.parse(GranaryApp.strings(gp,'(?i)(intent:|component|android\\.media\\.tv|deep.?link|iplayer|itv|channel4|my5|bbc|uk\\.co\\.|air\\.ITV|com\\.channel4|amzn|playback|launch)')||'{}');
+          await db.from('device_app_scans').insert({package:gp,app_label:labels[gp]+' (strings)',report:st}); saved+=2; }
         for(const pkg of ['uk.co.bbc.iplayer','air.ITVMobilePlayer','com.channel4.ondemand','com.mobileiq.demand5']){
           if(!labels[pkg])continue; out.textContent='Reading '+labels[pkg]+'…'; await new Promise(r=>setTimeout(r,50));
           const rep=JSON.parse(GranaryApp.strings(pkg,RX)||'{}');
