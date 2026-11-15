@@ -67,6 +67,8 @@ public class MainActivity extends Activity {
     /** Services whose Fire TV app ignores web links: just open the app. Updated from /app-config.json on the website. */
     final Set<String> appOnly = new HashSet<>(java.util.Arrays.asList("itv.com"));
     String pendingTitle = null;
+    /** Link rewrites from /app-config.json: {"host":"channel4.com","to":"channel4://{path}{query}","pkg":"com.channel4.ondemand"} */
+    final List<JSONObject> rewrites = new ArrayList<>();
 
     void loadConfig() {
         new Thread(() -> {
@@ -75,7 +77,10 @@ public class MainActivity extends Activity {
                 c.setConnectTimeout(5000); c.setReadTimeout(5000);
                 StringBuilder sb = new StringBuilder();
                 try (BufferedReader r = new BufferedReader(new InputStreamReader(c.getInputStream()))) { String l; while ((l = r.readLine()) != null) sb.append(l); }
-                JSONArray a = new JSONObject(sb.toString()).optJSONArray("appOnly");
+                JSONObject cfg = new JSONObject(sb.toString());
+                JSONArray rw = cfg.optJSONArray("rewrite");
+                if (rw != null) synchronized (rewrites) { rewrites.clear(); for (int i = 0; i < rw.length(); i++) rewrites.add(rw.getJSONObject(i)); }
+                JSONArray a = cfg.optJSONArray("appOnly");
                 if (a != null) { Set<String> n = new HashSet<>(); for (int i = 0; i < a.length(); i++) n.add(a.getString(i)); synchronized (appOnly) { appOnly.clear(); appOnly.addAll(n); } }
             } catch (Exception ignored) { }
         }).start();
@@ -178,6 +183,21 @@ public class MainActivity extends Activity {
     void openExternal(Uri u) {
         String[] service = serviceFor(u);
         String title = pendingTitle; pendingTitle = null;
+        // 0. a rewrite rule from the website config turns a web address into the app's own link
+        String host0 = u.getHost() == null ? "" : u.getHost().toLowerCase(Locale.UK);
+        synchronized (rewrites) {
+            for (JSONObject r : rewrites) {
+                String h = r.optString("host");
+                if (h.isEmpty() || !(host0.equals(h) || host0.endsWith("." + h))) continue;
+                String path = u.getEncodedPath() == null ? "" : u.getEncodedPath().replaceFirst("^/", "");
+                String q = u.getEncodedQuery() == null ? "" : "?" + u.getEncodedQuery();
+                String target = r.optString("to").replace("{path}", path).replace("{query}", q).replace("{title}", title == null ? "" : Uri.encode(title));
+                Intent ri = new Intent(Intent.ACTION_VIEW, Uri.parse(target)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                if (!r.optString("pkg").isEmpty()) ri.setPackage(r.optString("pkg"));
+                try { startActivity(ri); toast("Opening " + r.optString("name", "the app") + "…  Press Back to return"); return; }
+                catch (Exception ignored) { /* fall through to the normal route */ }
+            }
+        }
         if (service != null) {
             boolean deepOk; synchronized (appOnly) { deepOk = !appOnly.contains(service[0]); }
             for (String pkg : findApps(service)) {

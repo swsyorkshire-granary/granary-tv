@@ -1,4 +1,7 @@
 {
-  "_note": "Read by the Granary TV Fire TV app at start-up. appOnly = services whose Fire TV app ignores web links, so Granary just opens the app.",
-  "appOnly": ["itv.com", "channel4.com"]
+  "_note": "Read by the Granary TV Fire TV app at start-up. rewrite = turn a web address into the streaming app's own link (tested on the Fire Stick). appOnly = services whose app ignores links, so Granary just opens the app.",
+  "rewrite": [
+    {"name": "Channel 4", "host": "channel4.com", "to": "channel4://{path}{query}", "pkg": "com.channel4.ondemand"}
+  ],
+  "appOnly": ["itv.com"]
 }
