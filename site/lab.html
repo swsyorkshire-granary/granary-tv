@@ -24,6 +24,9 @@ a.back{color:#9cd;font-size:20px}
 <h2>Step 1 – Scan the streaming apps (one press)</h2>
 <div class="sub">Reads which links each streaming app on this Fire Stick says it accepts, and saves the result for Claude to read. You must be signed in to Granary TV.</div>
 <div class="row"><div class="n">★</div><div class="lbl"><b>Scan iPlayer, ITVX, Channel 4, 5, NOW, Prime, Disney+, Netflix…</b></div><div><button id="scanBtn">Scan apps</button></div><div class="res" id="scanRes"></div></div>
+<h2>Step 1b – Read the Fire TV guide entries (new, app 1.8)</h2>
+<div class="sub">Reads the "play" instructions that iPlayer, ITVX, Channel 4 and others registered with the Fire Stick's own guide and Continue-watching rows. The first press may show a permission prompt – choose <b>Allow</b>, then press again.</div>
+<div class="row"><div class="n">★</div><div class="lbl"><b>Read Fire TV guide entries</b></div><div><button id="epgBtn">Read guide</button></div><div class="res" id="epgRes"></div></div>
 <h2 style="margin-top:36px">Step 2 – Optional manual tests</h2>
 <div id="tests"></div>
 <h2>Apps installed on this Fire Stick</h2><div id="apps" class="apps">…</div>
@@ -150,6 +153,25 @@ else document.getElementById('apps').textContent='(only visible inside the app)'
         }
       }
       out.innerHTML=errors.length?'<span class="no">'+errors.join('<br>')+'</span>':'<span class="ok">Done ✓ '+saved+' apps scanned and saved. Tell Claude!</span>';
+    }catch(e){out.innerHTML='<span class="no">'+e.message+'</span>'}
+  };
+})();
+</script>
+<script>
+(function(){
+  const btn=document.getElementById('epgBtn'), out=document.getElementById('epgRes');
+  btn.onclick=async()=>{
+    if(!window.GranaryApp||typeof GranaryApp.tvProvider!=='function'){out.innerHTML='<span class="no">Needs Granary TV app 1.8 – reinstall from Downloader.</span>';return}
+    const perm=GranaryApp.askEpgPermission();
+    if(perm==='asked'){out.innerHTML='<span class="ok">Choose Allow on the prompt, then press Read guide again.</span>';return}
+    out.textContent='Reading…';
+    try{
+      const rep=JSON.parse(GranaryApp.tvProvider()||'{}'); rep.kind='tvprovider'; rep.permission=perm;
+      const db=window.supabase.createClient('https://tbnjyytzoyvdymdpimko.supabase.co','sb_publishable_OfPXxDIZPgew-S5XD51l9A__uChIZLC',{auth:{persistSession:true,autoRefreshToken:true}});
+      const {data:{session}}=await db.auth.getSession(); if(!session){out.innerHTML='<span class="no">Sign in on the main page first.</span>';return}
+      const {error}=await db.from('device_app_scans').insert({package:'android.media.tv',app_label:'Fire TV guide entries',report:rep});
+      const n=k=>Array.isArray(rep[k])?rep[k].length:(rep[k+'Error']?'blocked':'0');
+      out.innerHTML=error?'<span class="no">'+error.message+'</span>':'<span class="ok">Saved ✓ channels: '+n('channels')+', continue-watching: '+n('watchNext')+', previews: '+n('previews')+'. Tell Claude!</span>';
     }catch(e){out.innerHTML='<span class="no">'+e.message+'</span>'}
   };
 })();

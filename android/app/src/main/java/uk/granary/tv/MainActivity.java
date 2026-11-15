@@ -323,6 +323,48 @@ public class MainActivity extends Activity {
                 startActivity(i); return "started";
             } catch (Exception e) { return "error: " + e.getClass().getSimpleName() + " " + e.getMessage(); }
         }
+        /** Deep Link Lab: ask for permission to read the Fire TV channel guide data (shows a system prompt). */
+        @JavascriptInterface public String askEpgPermission() {
+            try {
+                if (android.os.Build.VERSION.SDK_INT >= 23 && checkSelfPermission("com.android.providers.tv.permission.READ_EPG_DATA") != PackageManager.PERMISSION_GRANTED) {
+                    runOnUiThread(() -> requestPermissions(new String[]{"com.android.providers.tv.permission.READ_EPG_DATA"}, 77));
+                    return "asked";
+                }
+                return "granted";
+            } catch (Exception e) { return "error: " + e.getMessage(); }
+        }
+        /** Deep Link Lab: read what streaming apps registered with the Fire TV guide (channels, continue-watching, previews) incl. their play intents. */
+        @JavascriptInterface public String tvProvider() {
+            JSONObject out = new JSONObject();
+            String[][] tables = {{"channels", "content://android.media.tv/channel"}, {"watchNext", "content://android.media.tv/watch_next_program"}, {"previews", "content://android.media.tv/preview_program"}};
+            for (String[] t : tables) {
+                JSONArray rows = new JSONArray();
+                try (android.database.Cursor c = getContentResolver().query(Uri.parse(t[1]), null, null, null, null)) {
+                    if (c == null) { out.put(t[0] + "Error", "null cursor"); continue; }
+                    String[] cols = c.getColumnNames();
+                    int n = 0;
+                    while (c.moveToNext() && n++ < 120) {
+                        JSONObject r = new JSONObject();
+                        for (int i = 0; i < cols.length; i++) {
+                            String col = cols[i];
+                            if (!(col.contains("intent") || col.contains("link") || col.contains("package") || col.contains("title") || col.contains("display_name") || col.contains("display_number")
+                                || col.contains("input_id") || col.contains("internal_provider") || col.contains("content_id") || col.equals("type") || col.contains("channel_id"))) continue;
+                            int ty = c.getType(i);
+                            if (ty == android.database.Cursor.FIELD_TYPE_BLOB) { byte[] b = c.getBlob(i); if (b != null) r.put(col, new String(b, java.nio.charset.StandardCharsets.UTF_8).replaceAll("[^\\x20-\\x7e]", ".")); }
+                            else if (ty != android.database.Cursor.FIELD_TYPE_NULL) r.put(col, c.getString(i));
+                        }
+                        rows.put(r);
+                    }
+                    try { out.put(t[0], rows); } catch (Exception ignored) { }
+                } catch (Throwable e) { try { out.put(t[0] + "Error", e.getClass().getSimpleName() + ": " + e.getMessage()); } catch (Exception ignored) { } }
+            }
+            return out.toString();
+        }
+        /** Deep Link Lab: fire an intent written as an Android intent URI (intent:#Intent;...;end), as the Fire TV guide would. */
+        @JavascriptInterface public String launchIntentUri(String uri) {
+            try { Intent i = Intent.parseUri(uri, Intent.URI_INTENT_SCHEME); i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK); startActivity(i); return "started"; }
+            catch (Exception e) { return "error: " + e.getClass().getSimpleName() + " " + e.getMessage(); }
+        }
         /** Deep Link Lab: which activities say they can open this link */
         @JavascriptInterface public String resolve(String uri) {
             try {
