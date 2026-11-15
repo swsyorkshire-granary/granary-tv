@@ -184,7 +184,55 @@ async function addSelectedToLibrary(){
     description:p.description||null,start_at:p.start.toISOString(),end_at:p.end.toISOString(),
     status:'wanted',notes:p.genre?'Genre: '+p.genre:null
   });
-  $('programmeMessage').textContent=error ? 'Could not save: '+error.message : 'Added to your library.';
+  if(error){$('programmeMessage').textContent='Could not save: '+error.message;return;}
+  $('programmeMessage').textContent='Added to your library. Finding where to watch…';
+  try{
+    const found=await granaryAutoFindLinks(p.title);
+    $('programmeMessage').textContent=found.length?'Added to your library. Found it on '+found.join(', ')+'.':'Added to your library. No exact match found on iPlayer, ITVX, Channel 4 or 5 yet.';
+  }catch(e){$('programmeMessage').textContent='Added to your library.';}
+}
+
+// ── Automatic programme links ───────────────────────────────────────────────
+// Asks the find-links helper (Supabase Edge Function) for the official programme page on each service.
+// Only exact title matches come back; they are saved as page_verified (never overwriting links you saved yourself).
+const GRANARY_FIND_LINKS_URL=GRANARY_SUPABASE_URL+'/functions/v1/find-links';
+function granaryCheckedRecently(nt){try{const m=JSON.parse(localStorage.getItem('granary-link-checks')||'{}');return m[nt]&&Date.now()-m[nt]<3*864e5}catch(e){return false}}
+function granaryMarkChecked(nt){try{const m=JSON.parse(localStorage.getItem('granary-link-checks')||'{}');m[nt]=Date.now();localStorage.setItem('granary-link-checks',JSON.stringify(m))}catch(e){}}
+async function granaryLookup(title){
+  const r=await fetch(GRANARY_FIND_LINKS_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({title})});
+  if(!r.ok)throw Error('lookup '+r.status);
+  return (await r.json()).best||{};
+}
+async function granaryAutoFindLinks(title){
+  if(!currentUser||!title)return [];
+  const nt=granaryNormaliseTitle(title);
+  let best=await granaryLookup(title);
+  // "Children in Need 2026", "Strictly Come Dancing: Series 24" → try the plain programme name too
+  const plain=title.replace(/\s*[:\-–]\s*(series|season)\s*\d+.*$/i,'').replace(/\s+\(?\d{4}\)?$/,'').trim();
+  if(!Object.keys(best).length&&plain&&plain!==title)best=await granaryLookup(plain);
+  // Keep anything you decided yourself; only fill gaps or upgrade unchecked "candidate" entries.
+  const {data:existing}=await granaryClient.from('programme_provider_links').select('service,verification_status').eq('normalized_title',nt);
+  const have=new Set((existing||[]).filter(r=>r.verification_status!=='candidate').map(r=>r.service));
+  const rows=Object.entries(best).filter(([svc])=>!have.has(svc)).map(([svc,m])=>({
+    user_id:currentUser.id,normalized_title:nt,programme_title:title,service:svc,candidate_url:m.url,
+    verification_status:'page_verified',checked_at:new Date().toISOString(),
+    notes:'Found automatically: official '+svc+' page for “'+m.title+'”.',updated_at:new Date().toISOString()
+  }));
+  if(rows.length){const {error}=await granaryClient.from('programme_provider_links').upsert(rows,{onConflict:'user_id,normalized_title,service'});if(error)console.warn('Saving found links failed:',error.message);}
+  granaryMarkChecked(nt);
+  return Object.keys(best);
+}
+// Fill in links for library programmes that have none yet (runs quietly in the background).
+let granaryAutoFillRunning=false;
+async function granaryAutoFillLibrary(items){
+  if(granaryAutoFillRunning||!currentUser)return;
+  const haveLinks=new Set(Object.values(granaryVerifiedLinksByTitle).map(r=>r.normalized_title));
+  const todo=[...new Set(items.map(i=>i.title))].filter(t=>{const nt=granaryNormaliseTitle(t);return !haveLinks.has(nt)&&!granaryCheckedRecently(nt)}).slice(0,10);
+  if(!todo.length)return;
+  granaryAutoFillRunning=true;let added=0;
+  try{for(const t of todo){try{added+=(await granaryAutoFindLinks(t)).length}catch(e){console.warn('Link lookup failed for',t,e)}}}
+  finally{granaryAutoFillRunning=false}
+  if(added&&$('libraryPanel').classList.contains('open'))openLibrary();
 }
 let librarySearch='',libraryStatus='all',librarySort='newest';
 let granaryVerifiedLinksByTitle={};
@@ -208,6 +256,7 @@ async function openLibrary(){
   if(error){$('libraryContent').textContent='Could not load library: '+error.message;return;}
   const metadataError=await loadGranaryMetadata();
   await loadGranaryVerifiedLinks();
+  setTimeout(()=>granaryAutoFillLibrary(data||[]),0);
   if(!data.length){$('libraryContent').textContent='Your library is empty. Open a programme in the guide and choose Add to My Library.';return;}
   $('libraryContent').innerHTML='';
   if(metadataError){const setup=document.createElement('div');setup.className='providerNote';setup.textContent='Automatic programme artwork and matching will activate after the Granary TV metadata table is installed in Supabase.';$('libraryContent').append(setup);}

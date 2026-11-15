@@ -57,6 +57,7 @@ async function openPage(url, { storage } = {}) {
   page.on('console', m => { if (m.type() === 'error') errors.push(m.text()); });
   await page.route('https://cdn.jsdelivr.net/**', r => r.fulfill({ contentType: 'text/javascript', body: supabaseStub }));
   await page.route('https://api.tvmaze.com/**', r => r.fulfill({ contentType: 'application/json', body: '[]' }));
+  await page.route('**/functions/v1/find-links', r => { const b = JSON.parse(r.request().postData() || '{}'); return r.fulfill({ contentType: 'application/json', headers: { 'Access-Control-Allow-Origin': '*' }, body: JSON.stringify({ title: b.title, best: { 'BBC iPlayer': { url: 'https://www.bbc.co.uk/iplayer/episodes/test', title: b.title, kind: 'programme' } } }) }); });
   await page.route('https://www.ontvnow.co.uk/**', r => {
     const u = new URL(r.request().url());
     if (u.pathname.endsWith('/channels')) return r.fulfill({ contentType: 'application/json', body: JSON.stringify({ data: directory }) });
@@ -88,6 +89,9 @@ for (const url of ['/index.html', '/tv.html']) {
   check((await page.$$('#modalHelp .providerSearches a, #modalHelp a')).length > 0, 'programme sheet has service links');
   await page.click('#addLibraryBtn'); await page.waitForTimeout(300);
   check((await page.evaluate(() => (window.__writes || []).some(w => w.table === 'library_items'))), 'add to library writes library_items');
+  await page.waitForTimeout(500);
+  check(await page.evaluate(() => (window.__writes || []).some(w => w.table === 'programme_provider_links' && JSON.stringify(w.row).includes('iplayer/episodes/test') && JSON.stringify(w.row).includes('page_verified'))), 'adding finds and saves the iPlayer link automatically');
+  check(/Found it on BBC iPlayer/.test(await page.textContent('#programmeMessage')), 'sheet says where it was found: ' + await page.textContent('#programmeMessage'));
   await page.click('#close');
   // library opens
   await page.click('#libraryBtn'); await page.waitForTimeout(500);
