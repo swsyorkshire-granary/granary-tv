@@ -89,6 +89,9 @@ function liveLinkFor(ch){
  const n=norm(ch.sourceName||ch.display), inApp=!!(window.GranaryApp&&window.GranaryApp.isApp);
  const c4={channel4:'C4',e4:'E4',more4:'M4',film4:'F4','4seven':'4S'};
  for(const k in c4){if(n.startsWith(k)&&!/(\+1|plus1)/.test(n)&&!n.startsWith(k+'1'))return{name:ch.display,url:(inApp?'channel4://www.channel4.com/now/':'https://www.channel4.com/now/')+c4[k]};}
+ // ITV channels: tested on the Fire Stick (Lab test 21) – the ITVX app plays the channel live.
+ const itv={itv1:'itv',itv2:'itv2',itv3:'itv3',itv4:'itv4',itvquiz:'itvquiz',itvbe:'itvbe'};
+ if(inApp&&window.GranaryApp.launchIntentUri){for(const k in itv){if(n.startsWith(k)&&!n.startsWith(k+'1'))return{name:ch.display,url:'intent:#Intent;component=air.ITVMobilePlayer/.ITVActivity;S.channelName='+itv[k]+';end',intent:true};}}
  if(inApp)return null;
  const web={bbcone:'https://www.bbc.co.uk/iplayer/live/bbcone',bbctwo:'https://www.bbc.co.uk/iplayer/live/bbctwo',bbcthree:'https://www.bbc.co.uk/iplayer/live/bbcthree',bbcfour:'https://www.bbc.co.uk/iplayer/live/bbcfour',bbcnews:'https://www.bbc.co.uk/iplayer/live/bbcnews',itv1:'https://www.itv.com/watch?channel=itv',itv2:'https://www.itv.com/watch?channel=itv2',itv3:'https://www.itv.com/watch?channel=itv3',itv4:'https://www.itv.com/watch?channel=itv4'};
  for(const k in web){if(n.startsWith(k))return{name:ch.display,url:web[k]};}
@@ -100,7 +103,7 @@ function showProgramme(p,ch){
  $('modalHelp').innerHTML=`<b>${esc(ch.display)}</b><br>${p.start.toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'})}<br>${p.start.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})}–${p.end.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})}<br><b>Genre:</b> ${esc(genre)}<hr style="border:0;border-top:1px solid #40516a;margin:12px 0"><b>Programme details</b><p>${esc(p.description||'No further programme description is available from the listings provider.')}</p>`;
  // ▶ Watch live: programme on now + a channel whose live link is known.
  const live=liveLinkFor(ch);const nowT=new Date();
- if(live&&p.start<=nowT&&p.end>nowT){const a=document.createElement('a');a.className='watchLive';a.href=live.url;a.textContent='▶ Watch live on '+live.name;a.dataset.title=ch.display+' live';if(!window.GranaryApp)a.target='_blank';a.rel='noopener';$('modalHelp').prepend(a);}
+ if(live&&p.start<=nowT&&p.end>nowT){const a=document.createElement('a');a.className='watchLive';a.href=live.url;a.textContent='▶ Watch live on '+live.name;a.dataset.title=ch.display+' live';if(!window.GranaryApp)a.target='_blank';a.rel='noopener';if(live.intent)a.onclick=e=>{e.preventDefault();const r=window.GranaryApp.launchIntentUri(live.url);if(r!=='started'){const m=document.getElementById('programmeMessage');if(m)m.textContent='Could not open ITVX: '+r;}};$('modalHelp').prepend(a);}
  $('chips').style.display='none';$('addSelect').style.display='none';$('addButton').style.display='none';
  $('modalHelp').querySelectorAll('.providerSearches').forEach(el=>el.remove());
  addProviderSearchLinks($('modalHelp'),p.title);
