@@ -1,0 +1,48 @@
+// Drive tv.html with the remote only (arrows, Enter, Escape/Back) in a 1920x1080 window.
+import { chromium } from 'playwright';
+import http from 'node:http'; import fs from 'node:fs'; import path from 'node:path';
+const root = path.resolve(path.dirname(new URL(import.meta.url).pathname), '../site');
+const server = http.createServer((q, r) => { let p = new URL(q.url, 'http://x').pathname; const f = path.join(root, p); if (!fs.existsSync(f)) { r.writeHead(404); return r.end(); } r.writeHead(200, { 'content-type': f.endsWith('.js') ? 'text/javascript' : f.endsWith('.css') ? 'text/css' : 'text/html' }); fs.createReadStream(f).pipe(r); }).listen(0);
+const base = `http://127.0.0.1:${server.address().port}`;
+const stub = `(()=>{window.__db={library_items:[{id:'a',title:'Vera',channel:'ITV3 HD',status:'wanted',created_at:'2026-11-01'},{id:'b',title:'The Great British Bake Off',channel:'Channel 4',status:'wanted',created_at:'2026-11-02'}],programme_metadata:[],programme_provider_links:[{normalized_title:'vera',service:'ITVX',candidate_url:'https://www.itv.com/watch/vera/1a7314',verification_status:'page_verified'}]};
+function q(t){const st={op:'select'};const p={select(){return p},eq(){return p},order(){return p},limit(){return p},in(){return p},maybeSingle(){st.one=1;return p},single(){st.one=1;return p},insert(r){st.op='w';st.row=r;return p},upsert(r){st.op='w';st.row=r;return p},update(r){st.op='w';st.row=r;return p},delete(){st.op='w';return p},then(a,b){let d=st.op==='w'?st.row:(window.__db[t]||[]);if(st.op==='w'&&st.row&&!Array.isArray(st.row)){const L=window.__db[t]=window.__db[t]||[];const i=L.findIndex(x=>x.normalized_title&&x.normalized_title===st.row.normalized_title);if(i>=0)L[i]=st.row;else L.push(st.row);}if(st.one&&Array.isArray(d))d=d[0]||null;return Promise.resolve({data:d,error:null}).then(a,b)}};return p}
+const u={id:'u1',email:'t@example.com',user_metadata:{}};window.supabase={createClient(){return{from:q,auth:{getSession:()=>Promise.resolve({data:{session:{user:u}}}),getUser:()=>Promise.resolve({data:{user:u}}),onAuthStateChange(){return{data:{subscription:{unsubscribe(){}}}}},signOut:()=>Promise.resolve({})}}}};})();`;
+let fail = 0; const check = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); if (!c) fail++; };
+const b = await chromium.launch({ executablePath: '/usr/bin/google-chrome' });
+const page = await (await b.newContext({ viewport: { width: 1920, height: 1080 } })).newPage();
+const errs = []; page.on('pageerror', e => errs.push(String(e)));
+await page.route('https://cdn.jsdelivr.net/**', r => r.fulfill({ contentType: 'text/javascript', body: stub }));
+await page.route('https://api.tvmaze.com/**', r => r.fulfill({ contentType: 'application/json', body: '[]' }));
+await page.route('https://www.ontvnow.co.uk/**', r => { const u = new URL(r.request().url()); if (u.pathname.endsWith('/channels')) return r.fulfill({ contentType: 'application/json', body: JSON.stringify({ data: [{ id: 3, name: 'BBC One Yorkshire' }, { id: 9, name: 'ITV1 Yorkshire' }] }) });
+  const d = new Date(); d.setHours(0, 0, 0, 0); const out = []; for (let h = 0; h < 24; h += 1) { const s = new Date(+d + h * 36e5); out.push({ title: 'P' + u.searchParams.get('channel_id') + '-' + h, start: s.toISOString(), end: new Date(+s + 36e5).toISOString() }); } return r.fulfill({ contentType: 'application/json', body: JSON.stringify({ data: out }) }); });
+await page.goto(base + '/tv.html'); await page.waitForSelector('.program'); await page.waitForTimeout(500);
+const act = () => page.evaluate(() => { const a = document.activeElement; return a ? (a.id || a.className || a.tagName) + ' | ' + (a.textContent || '').trim().slice(0, 40) : 'none'; });
+const key = async k => { await page.keyboard.press(k); await page.waitForTimeout(120); return act(); };
+console.log('start focus:', await key('ArrowDown'));
+// Walk to the My Library button
+let found = false;
+for (let i = 0; i < 25 && !found; i++) { const a = await act(); if (a.startsWith('libraryBtn')) { found = true; break; } await key(i < 6 ? 'ArrowDown' : 'ArrowRight'); if ((await act()).startsWith('libraryBtn')) found = true; }
+if (!found) { await page.evaluate(() => document.getElementById('signOutBtn').focus()); await key('ArrowRight'); found = (await act()).startsWith('libraryBtn'); }
+check(found, 'can reach My Library with arrows: ' + await act());
+await page.keyboard.press('Enter'); await page.waitForTimeout(700);
+const inLib = await page.evaluate(() => document.getElementById('libraryPanel').contains(document.activeElement));
+check(inLib, 'opening library moves focus into it: ' + await act());
+const seen = new Set(); for (const k of ['ArrowDown','ArrowDown','ArrowDown','ArrowLeft','ArrowUp','ArrowLeft','ArrowRight','ArrowRight']) { const r = await key(k); console.log('   ', k, '->', r); seen.add(r); }
+console.log('   library stops:', [...seen].join(' || '));
+check([...seen].some(s => /ITVX/.test(s)), 'can reach the Open ITVX button by remote');
+check(await page.evaluate(() => document.getElementById('libraryPanel').contains(document.activeElement)), 'focus stays inside the library');
+const backed = await page.evaluate(() => window.granaryBack());
+await page.waitForTimeout(300);
+check(backed && !(await page.evaluate(() => document.getElementById('libraryPanel').classList.contains('open'))), 'Back closes the library');
+check((await act()).startsWith('libraryBtn'), 'focus returns to My Library button');
+// Programme details sheet from the grid
+await page.evaluate(() => document.querySelector('.program').focus()); await key('ArrowRight');
+await page.keyboard.press('Enter'); await page.waitForTimeout(400);
+check(await page.evaluate(() => document.getElementById('modal').classList.contains('open') && document.getElementById('modal').contains(document.activeElement)), 'programme sheet opens with focus inside: ' + await act());
+const sheet = new Set(); for (let i = 0; i < 4; i++) sheet.add(await key('ArrowDown'));
+console.log('   sheet stops:', [...sheet].join(' || '));
+await page.evaluate(() => window.granaryBack()); await page.waitForTimeout(200);
+check(!(await page.evaluate(() => document.getElementById('modal').classList.contains('open'))), 'Back closes programme sheet');
+check(await page.evaluate(() => document.activeElement.classList.contains('program')), 'focus back on the grid');
+check(errs.length === 0, 'no errors ' + errs.join(' | '));
+await b.close(); server.close(); console.log(fail ? fail + ' FAILED' : 'ALL PASSED'); process.exit(fail ? 1 : 0);

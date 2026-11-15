@@ -189,7 +189,15 @@ public class MainActivity extends Activity {
 
     @Override
     public boolean onKeyDown(int keyCode, KeyEvent event) {
-        if (keyCode == KeyEvent.KEYCODE_BACK && web.canGoBack()) { web.goBack(); return true; }
+        if (keyCode == KeyEvent.KEYCODE_BACK) {
+            // Ask the page first: an open panel (Library, programme details, Channels…) closes.
+            web.evaluateJavascript("(window.granaryBack && window.granaryBack()) ? 'closed' : 'none'", result -> {
+                if (result != null && result.contains("closed")) return;
+                if (web.canGoBack()) web.goBack();
+                else finish();
+            });
+            return true;
+        }
         return super.onKeyDown(keyCode, event);
     }
 

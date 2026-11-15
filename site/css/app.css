@@ -67,3 +67,6 @@
 @media(min-width:650px) and (max-width:899px){.libraryGrid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:649px){.libraryGrid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 .libraryCount{font-size:12px;color:var(--muted);padding:0 0 8px}
+
+/* Remote-control focus ring (js/tvnav.js) */
+html.remoteNav :focus{outline:4px solid #ffd37b!important;outline-offset:2px;box-shadow:0 0 0 6px #ffd37b55}

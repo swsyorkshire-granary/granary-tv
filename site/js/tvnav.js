@@ -1,0 +1,136 @@
+// Granary TV remote-control navigation (Fire TV / smart-TV browsers).
+// Arrow keys move focus to the nearest control in that direction, inside whichever panel is open on top.
+// Opening a panel moves focus into it; closing it puts focus back where you were.
+// window.granaryBack() closes the top panel (called by the Fire TV app's Back button).
+(function () {
+  const FOCUSABLE = 'a[href],button:not([disabled]),select:not([disabled]),input:not([disabled]):not([type=hidden]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])';
+  const LAYERS = '.cloudPanel.open,.modal.open';
+  const returnTo = new Map();
+  let lastKey = null; // identifies the focused control so it can be found again after the page redraws it
+
+  function keyOf(el) {
+    const layer = el.closest(LAYERS) || document.body;
+    const label = (el.textContent || el.getAttribute('aria-label') || el.placeholder || el.id || '').trim().slice(0, 60);
+    const same = focusables(layer).filter(x => x.tagName === el.tagName && (x.textContent || x.getAttribute('aria-label') || x.placeholder || x.id || '').trim().slice(0, 60) === label);
+    return { layer, tag: el.tagName, id: el.id, label, n: same.indexOf(el) };
+  }
+  function findKey(k, layer) {
+    if (!k || k.layer !== layer) return null;
+    if (k.id) { const byId = document.getElementById(k.id); if (byId && layer.contains(byId) && visible(byId)) return byId; }
+    const same = focusables(layer).filter(x => x.tagName === k.tag && (x.textContent || x.getAttribute('aria-label') || x.placeholder || x.id || '').trim().slice(0, 60) === k.label);
+    return same[Math.max(0, Math.min(k.n, same.length - 1))] || null;
+  }
+  document.addEventListener('focusin', e => { if (e.target && e.target !== document.body && e.target.matches && e.target.matches(FOCUSABLE)) lastKey = keyOf(e.target); }, true);
+
+  function topLayer() {
+    const open = [...document.querySelectorAll(LAYERS)];
+    if (!open.length) return document.body;
+    // highest z-index wins; later in the page wins ties
+    return open.reduce((a, b) => (+getComputedStyle(b).zIndex || 0) >= (+getComputedStyle(a).zIndex || 0) ? b : a);
+  }
+  function visible(el) {
+    if (!el.getClientRects().length) return false;
+    const s = getComputedStyle(el);
+    if (s.visibility === 'hidden' || s.display === 'none' || +s.opacity === 0) return false;
+    const r = el.getBoundingClientRect();
+    return r.width > 1 && r.height > 1;
+  }
+  function focusables(layer) {
+    return [...layer.querySelectorAll(FOCUSABLE)].filter(el => visible(el) && !el.closest('[aria-hidden="true"]') &&
+      (layer !== document.body || !el.closest(LAYERS.replace(/\.open/g, ''))));
+  }
+  function focusEl(el) {
+    if (!el) return;
+    el.focus({ preventScroll: true });
+    el.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    document.documentElement.classList.add('remoteNav');
+  }
+  function centre(r) { return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; }
+
+  function best(from, dir, list) {
+    const a = from.getBoundingClientRect(), ac = centre(a);
+    let pick = null, score = Infinity;
+    for (const el of list) {
+      if (el === from) continue;
+      const b = el.getBoundingClientRect(), bc = centre(b);
+      let main, side;
+      if (dir === 'ArrowRight') { if (b.left < a.right - 4 && bc.x <= ac.x + 4) continue; main = Math.max(0, b.left - a.right); side = Math.abs(bc.y - ac.y); }
+      if (dir === 'ArrowLeft')  { if (b.right > a.left + 4 && bc.x >= ac.x - 4) continue; main = Math.max(0, a.left - b.right); side = Math.abs(bc.y - ac.y); }
+      if (dir === 'ArrowDown')  { if (b.top < a.bottom - 4 && bc.y <= ac.y + 4) continue; main = Math.max(0, b.top - a.bottom); side = Math.abs(bc.x - ac.x); }
+      if (dir === 'ArrowUp')    { if (b.bottom > a.top + 4 && bc.y >= ac.y - 4) continue; main = Math.max(0, a.top - b.bottom); side = Math.abs(bc.x - ac.x); }
+      // Rows (up/down) care a lot about staying in the same column; left/right about the same row.
+      const overlap = (dir === 'ArrowLeft' || dir === 'ArrowRight')
+        ? Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top)
+        : Math.min(a.right, b.right) - Math.max(a.left, b.left);
+      const s = main + side * (overlap > 0 ? 0.3 : 2);
+      if (s < score) { score = s; pick = el; }
+    }
+    return pick;
+  }
+
+  document.addEventListener('keydown', e => {
+    if (!['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) return;
+    const active = document.activeElement;
+    // Let text boxes use left/right for the cursor.
+    if (active && (active.tagName === 'TEXTAREA' || (active.tagName === 'INPUT' && !['checkbox', 'radio', 'button', 'submit'].includes(active.type))) &&
+        (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
+      const v = active.value || '', p = active.selectionStart;
+      if (!(e.key === 'ArrowLeft' && p === 0) && !(e.key === 'ArrowRight' && p === v.length)) return;
+    }
+    const layer = topLayer(), list = focusables(layer);
+    if (!list.length) return;
+    e.preventDefault();
+    if (!active || active === document.body || !layer.contains(active)) { focusEl(findKey(lastKey, layer) || list[0]); return; }
+    const next = best(active, e.key, list);
+    if (next) focusEl(next);
+    else if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+      // Nothing further that way: scroll the panel so long lists can still be read.
+      const scroller = active.closest('.cloudPanel > *, .modal > *, .libraryContent, #libraryContent') || document.scrollingElement;
+      scroller.scrollBy({ top: e.key === 'ArrowDown' ? 200 : -200 });
+    }
+  }, true);
+
+  // Move focus into panels as they open; restore it when they close.
+  const watch = new MutationObserver(muts => {
+    for (const m of muts) {
+      const el = m.target;
+      if (!el.matches || !el.matches('.cloudPanel,.modal')) continue;
+      const open = el.classList.contains('open');
+      if (open && !returnTo.has(el)) {
+        returnTo.set(el, document.activeElement);
+        setTimeout(() => { const l = focusables(el); if (l.length && !el.contains(document.activeElement)) focusEl(l.find(x => !x.classList.contains('close')) || l[0]); }, 60);
+      } else if (!open && returnTo.has(el)) {
+        const back = returnTo.get(el); returnTo.delete(el);
+        if (back && document.contains(back) && visible(back)) focusEl(back);
+      }
+    }
+  });
+  // If a redraw removes the focused control, put focus back on its replacement.
+  let redrawTimer = null;
+  const redraw = new MutationObserver(() => {
+    clearTimeout(redrawTimer);
+    redrawTimer = setTimeout(() => {
+      const a = document.activeElement;
+      if (a && a !== document.body && document.contains(a)) return;
+      const layer = topLayer(); const el = findKey(lastKey, layer);
+      if (el) focusEl(el);
+    }, 50);
+  });
+  function start() {
+    document.querySelectorAll('.cloudPanel,.modal').forEach(el => {
+      watch.observe(el, { attributes: true, attributeFilter: ['class'] });
+      redraw.observe(el, { childList: true, subtree: true });
+    });
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();
+
+  // Back button: close the top panel. Returns true if something was closed.
+  window.granaryBack = function () {
+    const layer = topLayer();
+    if (layer === document.body) return false;
+    const closeBtn = [...layer.querySelectorAll('button')].find(b => /close|✕|cancel/i.test(b.textContent) || b.id === 'close');
+    if (closeBtn) closeBtn.click(); else layer.classList.remove('open');
+    return true;
+  };
+  document.addEventListener('keydown', e => { if ((e.key === 'Escape' || e.key === 'GoBack' || e.key === 'BrowserBack') && window.granaryBack()) e.preventDefault(); });
+})();
