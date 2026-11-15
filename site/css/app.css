@@ -70,3 +70,7 @@
 
 /* Remote-control focus ring (js/tvnav.js) */
 html.remoteNav :focus{outline:4px solid #ffd37b!important;outline-offset:2px;box-shadow:0 0 0 6px #ffd37b55}
+
+/* ▶ Watch live button in the programme sheet */
+.watchLive{display:inline-block;margin:0 0 14px;padding:14px 22px;border-radius:12px;background:#c0392b;color:#fff!important;font-weight:800;font-size:1.15em;text-decoration:none}
+.watchLive:hover,.watchLive:focus{background:#e74c3c}
