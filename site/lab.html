@@ -53,6 +53,16 @@ const GROUPS=[
   ['Web live page','https://www.itv.com/watch?channel=itv'],
   ['ITVX TV start-app link (control)','itvhomescreenchannels://com.itv.tenft.itvhub/startapp'],
  ]],
+ ['ITVX – search (opens ITVX search for a programme)',[
+  ['ITVX search for "Vera"','search:Vera','air.ITVMobilePlayer'],
+  ['ITVX search for "Vera" (ITVActivity)','search:Vera','air.ITVMobilePlayer','air.ITVMobilePlayer.ITVActivity'],
+ ]],
+ ['ITVX – Vera, other web address layouts (sent to ITVX app)',[
+  ['Old ITV Hub episode address','https://www.itv.com/hub/vera/1a7314a0061','air.ITVMobilePlayer'],
+  ['Programme page (no episode)','https://www.itv.com/watch/vera/1a7314','air.ITVMobilePlayer'],
+  ['Episode page','https://www.itv.com/watch/vera/1a7314/1a7314a0061','air.ITVMobilePlayer'],
+  ['Live ITV1','https://www.itv.com/watch?channel=itv','air.ITVMobilePlayer'],
+ ]],
  ['ITVX – Vera S14 E1',[
   ['ITV app play link (production id)','itvplayer://freeview_app/play/1_7314_0061.001'],
   ['ITV app play link (url id)','itvplayer://freeview_app/play/1a7314a0061'],
@@ -68,6 +78,13 @@ const GROUPS=[
   ['Channel 4 app brand link','all4://views/brands?brand=the-great-british-bake-off'],
   ['Web episode page','https://www.channel4.com/programmes/the-great-british-bake-off/on-demand/79486-005'],
  ]],
+ ['Channel 4 – channel4:// links',[
+  ['Live Channel 4','channel4://now/C4'],
+  ['Live Channel 4 (alt)','channel4://live/C4'],
+  ['Bake Off programme','channel4://programmes/the-great-british-bake-off'],
+  ['Bake Off episode','channel4://programmes/the-great-british-bake-off/on-demand/79486-005'],
+  ['Bake Off brand view','channel4://views/brands?brand=the-great-british-bake-off&programme=79486-005'],
+ ]],
  ['Channel 5 / My5 – live Channel 5',[
   ['My5 app live link','my5://watch/C5'],
   ['Web live page','https://www.channel5.com/channel/5'],
@@ -80,13 +97,13 @@ GROUPS.forEach(([title,tests])=>{
   const h=document.createElement('h2');h.textContent=title;host.append(h);
   tests.forEach(([label,url,pkg,cls])=>{
     n++;const row=document.createElement('div');row.className='row';
-    const handlers=app?JSON.parse(app.resolve(url)||'[]'):[];
+    const handlers=app&&!url.startsWith('search:')?JSON.parse(app.resolve(url)||'[]'):[];
     const target=pkg?pkg+(cls?' (DeepLinkActivity)':''):(handlers.length?handlers.map(h=>h.split('/')[0]).filter((v,i,a)=>a.indexOf(v)===i).join(', '):'');
     row.innerHTML=`<div class="n">${n}</div><div class="lbl"><b></b><code></code></div><div><button>Try ${n}</button></div><div class="res"></div>`;
     row.querySelector('b').textContent=label;row.querySelector('code').textContent=url;
     const res=row.querySelector('.res');
     res.innerHTML=app?(target?`<span class="ok">opens in: ${target}</span>`:'<span class="no">no app claims this link</span>'):'';
-    row.querySelector('button').onclick=()=>{ if(!app)return; const r=app.launch(url,pkg||'',cls||''); res.innerHTML=(r==='started'?'<span class="ok">sent ✓</span> ':'<span class="no">'+r+'</span> ')+(target?'→ '+target:''); };
+    row.querySelector('button').onclick=()=>{ if(!app)return; const r=url.startsWith('search:')?(typeof app.search==='function'?app.search(pkg,cls||'',url.slice(7)):'needs app 1.6'):app.launch(url,pkg||'',cls||''); res.innerHTML=(r==='started'?'<span class="ok">sent ✓</span> ':'<span class="no">'+r+'</span> ')+(target?'→ '+target:''); };
     host.append(row);
   });
 });
@@ -99,7 +116,7 @@ else document.getElementById('apps').textContent='(only visible inside the app)'
   const PKGS=['uk.co.bbc.iplayer','air.ITVMobilePlayer','com.channel4.ondemand','com.mobileiq.demand5','com.bskyb.nowtv.beta','com.amazon.firebat','com.disney.disneyplus','com.netflix.ninja','com.amazon.firetv.youtube','com.tubitv.ott','com.cbs.ca','com.apple.atve.amazon.appletv'];
   const btn=document.getElementById('scanBtn'), out=document.getElementById('scanRes');
   btn.onclick=async()=>{
-    if(!window.GranaryApp||typeof GranaryApp.manifest!=='function'){out.innerHTML='<span class="no">Needs Granary TV app 1.5 – reinstall from Downloader.</span>';return}
+    if(!window.GranaryApp||typeof GranaryApp.manifest!=='function'){out.innerHTML='<span class="no">Needs Granary TV app 1.6 – reinstall from Downloader.</span>';return}
     out.textContent='Scanning…';
     try{
       const db=window.supabase.createClient('https://tbnjyytzoyvdymdpimko.supabase.co','sb_publishable_OfPXxDIZPgew-S5XD51l9A__uChIZLC',{auth:{persistSession:true,autoRefreshToken:true}});
@@ -112,6 +129,16 @@ else document.getElementById('apps').textContent='(only visible inside the app)'
         const rep=JSON.parse(GranaryApp.manifest(pkg)||'{}');
         const {error}=await db.from('device_app_scans').insert({package:pkg,app_label:labels[pkg],version:rep.version||null,report:rep});
         if(error)errors.push(pkg+': '+error.message);else saved++;
+      }
+      // Link-related text inside the UK apps (route patterns and intent extra names)
+      const RX='(?i)(deep.?link|amzn_|channel4:|my5:|itv\\.com/|bbc\\.co\\.uk/iplayer|/watch|/programmes|on-demand|simulcast|playback|/episode|brand|programmeId|productionId|episodeId|contentId|launch_?param|\\bquery\\b)';
+      if(typeof GranaryApp.strings==='function'){
+        for(const pkg of ['uk.co.bbc.iplayer','air.ITVMobilePlayer','com.channel4.ondemand','com.mobileiq.demand5']){
+          if(!labels[pkg])continue; out.textContent='Reading '+labels[pkg]+'…'; await new Promise(r=>setTimeout(r,50));
+          const rep=JSON.parse(GranaryApp.strings(pkg,RX)||'{}');
+          const {error}=await db.from('device_app_scans').insert({package:pkg,app_label:labels[pkg]+' (strings)',version:null,report:rep});
+          if(error)errors.push(pkg+' strings: '+error.message);else saved++;
+        }
       }
       out.innerHTML=errors.length?'<span class="no">'+errors.join('<br>')+'</span>':'<span class="ok">Done ✓ '+saved+' apps scanned and saved. Tell Claude!</span>';
     }catch(e){out.innerHTML='<span class="no">'+e.message+'</span>'}

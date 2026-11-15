@@ -282,6 +282,27 @@ public class MainActivity extends Activity {
                 try { return new JSONObject(fallback).put("apkError", e.getClass().getSimpleName() + ": " + e.getMessage()).toString(); } catch (Exception ignored) { return fallback; }
             }
         }
+        /** Deep Link Lab: link-related text inside an app (route patterns, intent extra names). */
+        @JavascriptInterface public String strings(String pkg, String regex) {
+            try {
+                android.content.pm.ApplicationInfo ai = getPackageManager().getApplicationInfo(pkg, 0);
+                java.util.List<String> apks = new java.util.ArrayList<>(); apks.add(ai.sourceDir);
+                if (ai.splitSourceDirs != null) java.util.Collections.addAll(apks, ai.splitSourceDirs);
+                JSONArray a = new JSONArray();
+                for (String s : DexStrings.find(apks, java.util.regex.Pattern.compile(regex), 600)) a.put(s);
+                return new JSONObject().put("package", pkg).put("kind", "strings").put("regex", regex).put("strings", a).toString();
+            } catch (Throwable e) {
+                try { return new JSONObject().put("package", pkg).put("kind", "strings").put("error", e.getClass().getSimpleName() + ": " + e.getMessage()).toString(); } catch (Exception ignored) { return "{}"; }
+            }
+        }
+        /** Deep Link Lab: send a search to an app (Intent.ACTION_SEARCH with a query). */
+        @JavascriptInterface public String search(String pkg, String cls, String query) {
+            try {
+                Intent i = new Intent(Intent.ACTION_SEARCH).putExtra(android.app.SearchManager.QUERY, query).putExtra("query", query).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                if (cls != null && !cls.isEmpty()) i.setClassName(pkg, cls); else i.setPackage(pkg);
+                startActivity(i); return "started";
+            } catch (Exception e) { return "error: " + e.getClass().getSimpleName() + " " + e.getMessage(); }
+        }
         /** Deep Link Lab: which activities say they can open this link */
         @JavascriptInterface public String resolve(String uri) {
             try {
