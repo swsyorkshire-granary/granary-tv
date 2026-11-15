@@ -34,7 +34,7 @@ function listingsFor(id) {
 }
 
 const supabaseStub = `
-window.__db={library_items:[{id:'a',title:'Vera',channel:'ITV3 HD',status:'wanted',created_at:'2026-11-01'}],programme_metadata:[],programme_provider_links:[]};
+window.__db={library_items:[{id:'a',title:'Vera',channel:'ITV3 HD',status:'wanted',created_at:'2026-11-01'}],programme_metadata:[],programme_provider_links:[{normalized_title:'vera',service:'ITVX',candidate_url:'https://www.itv.com/watch/vera/1a5726',verification_status:'page_verified',checked_at:'2026-11-15T12:00:00Z'}]};
 function q(table){const st={table,op:'select'};const p={
  select(){return p},eq(){return p},order(){return p},limit(){return p},maybeSingle(){st.single=true;return p},single(){st.single=true;return p},
  insert(r){st.op='insert';st.row=r;return p},upsert(r){st.op='upsert';st.row=r;return p},update(r){st.op='update';st.row=r;return p},delete(){st.op='delete';return p},in(){return p},ilike(){return p},
@@ -92,6 +92,9 @@ for (const url of ['/index.html', '/tv.html']) {
   // library opens
   await page.click('#libraryBtn'); await page.waitForTimeout(500);
   check((await page.textContent('#libraryContent')).includes('Vera'), 'library lists saved programme');
+  const links = await page.$$eval('#libraryContent a', as => as.map(a => [a.textContent, a.href]));
+  check(links.some(([t, h]) => /ITVX/.test(t) && h === 'https://www.itv.com/watch/vera/1a5726'), 'library uses verified ITVX link for Vera');
+  check(await page.$('#libraryPanel a[href="link-test-bench.html"]') !== null, 'library has Link Test Bench button');
   if (url === '/tv.html') check(await page.evaluate(() => document.body.classList.contains('tv') && [...document.styleSheets].some(s => (s.href || '').includes('tv.css'))), 'TV stylesheet applied');
   check(errors.length === 0, 'no console errors' + (errors.length ? ': ' + errors.join(' | ') : ''));
   await ctx.close();

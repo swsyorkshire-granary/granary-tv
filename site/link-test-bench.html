@@ -1,0 +1,77 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Granary TV – Link Test Bench</title><!-- V18: form no longer resets when returning to the tab --><style>
+:root{color-scheme:dark;--bg:#0d1828;--panel:#17263b;--line:#2b3d56;--muted:#9aabc0;--blue:#2b628d;--green:#207b58;--amber:#765d24}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:#f4f7fb;font:16px system-ui,-apple-system,sans-serif}.wrap{max-width:1100px;margin:auto;padding:22px}.top{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}.sub{color:var(--muted)}.panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px;margin:16px 0}.row{display:grid;grid-template-columns:1.2fr 1fr 2fr 1.3fr;gap:10px;align-items:center;margin:10px 0}.row.head{color:var(--muted);font-size:13px}.field,select,button{font:inherit;border:1px solid var(--line);border-radius:9px;padding:10px;background:#102035;color:#fff;min-width:0}button,.btn{cursor:pointer;background:var(--blue);border:0;color:white;text-decoration:none;display:inline-block;padding:10px 14px;border-radius:9px}.btn.secondary,button.secondary{background:#263951;border:1px solid var(--line)}.actions{display:flex;gap:8px;flex-wrap:wrap}.status{font-size:13px;color:var(--muted)}.good{color:#7fe0ae}.warn{color:#ffd37b}.bad{color:#ff9c9c}.hide{display:none}.programme{font-weight:700}.note{font-size:13px;color:var(--muted)}@media(max-width:760px){.row{grid-template-columns:1fr 1fr}.row .url{grid-column:1/-1}.row .actions{grid-column:1/-1}.row.head{display:none}}
+</style></head><body><main class="wrap"><div class="top"><div><h1>Granary TV – Link Test Bench</h1><div class="sub">Private workspace for checking programme destinations before they become trusted links.</div></div><a class="btn secondary" href="index.html">Back to My Library</a></div><section class="panel" id="authPanel"><h2>Sign in to Granary TV</h2><p class="sub">Use the same Granary TV account you use for My Library.</p><input class="field" id="email" type="email" placeholder="Email address"><input class="field" id="password" type="password" placeholder="Password"><button id="signIn">Sign in</button><div id="authMsg" class="status"></div></section><section class="panel hide" id="appPanel"><div class="top"><div><h2>Test programme links</h2><p class="sub">Choose a saved programme, select a service, open the candidate page, then record what you actually verified.</p></div><button class="secondary" id="signOut">Sign out</button></div><div class="row"><label for="programme">Programme</label><select id="programme" style="grid-column:span 3"></select></div><div class="row"><label for="service">Streaming service</label><select id="service" style="grid-column:span 3"></select></div><div class="row"><label for="url">Candidate URL</label><input id="url" class="field url" placeholder="Paste the programme or episode page URL" style="grid-column:span 2"><button id="openUrl">Open to test ↗</button></div><div class="row"><label for="status">Verification result</label><select id="status" style="grid-column:span 3"><option value="candidate">Candidate – not checked</option><option value="page_verified">Programme page verified</option><option value="playback_confirmed">Playback confirmed</option><option value="broken">Broken / wrong destination</option><option value="not_available">Not available on this service</option></select></div><div class="row"><label for="notes">Notes</label><input id="notes" class="field" placeholder="e.g. Opens series page; episode requires sign-in" style="grid-column:span 3"></div><div class="actions"><button id="save">Save verification</button><button id="clear" class="secondary">Clear fields</button></div><p class="note">Important: opening a page is not proof that an episode plays. Mark “Playback confirmed” only after you have actually started playback. A service may require sign-in or a subscription.</p><div id="msg" class="status"></div></section><section class="panel hide" id="recordsPanel"><h2>Saved link checks</h2><div id="records"></div></section></main><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.89.0/dist/umd/supabase.js"></script><script>
+const SUPABASE_URL='https://tbnjyytzoyvdymdpimko.supabase.co',KEY='sb_publishable_OfPXxDIZPgew-S5XD51l9A__uChIZLC';
+const SERVICES=['BBC iPlayer','ITVX','Channel 4','Channel 5','Amazon Prime Video','Disney+','Sky / NOW','Apple TV+'];
+const $=id=>document.getElementById(id);let db=null,user=null,items=[],recordLoadToken=0,recordLoading=false,formDirty=false;
+function norm(v){return String(v||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/&/g,'and').replace(/[^a-z0-9]/g,'')}
+function showAuth(message,kind=''){const el=$('authMsg');el.textContent=message||'';el.className='status '+kind}
+function showMessage(message,kind=''){const el=$('msg');el.textContent=message||'';el.className='status '+kind}
+async function renderAuth(){
+  $('authPanel').classList.toggle('hide',!!user);$('appPanel').classList.toggle('hide',!user);$('recordsPanel').classList.toggle('hide',!user);
+  if(user){await loadItems();await listRecords()}
+}
+async function loadItems(){
+  const {data,error}=await db.from('library_items').select('title').order('created_at',{ascending:false});
+  if(error){showMessage('Could not read library: '+error.message,'bad');return}
+  items=[...new Set((data||[]).map(x=>x.title).filter(Boolean))];const sel=$('programme');const prevTitle=sel.value,prevService=$('service').value;sel.innerHTML='';
+  items.forEach(t=>{const o=document.createElement('option');o.value=t;o.textContent=t;sel.append(o)});
+  const ss=$('service');ss.innerHTML='';SERVICES.forEach(t=>{const o=document.createElement('option');o.value=t;o.textContent=t;ss.append(o)});
+  if(items.includes(prevTitle))sel.value=prevTitle;if(SERVICES.includes(prevService))ss.value=prevService;if(!items.length)showMessage('Your library is empty. Add a programme in My Library first.');else if(!formDirty)await loadRecord();
+}
+async function loadRecord(){
+  if(!user||!$('programme').value||!$('service').value)return;
+  const token=++recordLoadToken;recordLoading=true;formDirty=false;$('save').disabled=true;showMessage('Loading any saved check…');
+  const title=$('programme').value,service=$('service').value;
+  try{
+    const {data,error}=await db.from('programme_provider_links').select('*').eq('normalized_title',norm(title)).eq('service',service).maybeSingle();
+    if(token!==recordLoadToken)return;
+    if(error)throw error;
+    // Never let a late background response overwrite anything the user has just entered.
+    if(!formDirty){$('url').value=data?.candidate_url||'';$('status').value=data?.verification_status||'candidate';$('notes').value=data?.notes||'';}
+    showMessage(data?'Loaded saved check.':'No saved check for this programme/service yet.');
+  }catch(e){if(token===recordLoadToken)showMessage('Could not load saved check: '+e.message,'bad')}
+  finally{if(token===recordLoadToken){recordLoading=false;$('save').disabled=false}}
+}
+async function listRecords(){
+  const {data,error}=await db.from('programme_provider_links').select('*').order('updated_at',{ascending:false});
+  if(error){$('records').textContent='Could not load checks: '+error.message;return}
+  const host=$('records');host.innerHTML='';if(!data?.length){host.textContent='No links checked yet.';return}
+  const labels={candidate:'Candidate – not checked',page_verified:'Programme page verified',playback_confirmed:'Playback confirmed',broken:'Broken / wrong destination',not_available:'Not available on this service'};
+  data.forEach(r=>{const d=document.createElement('div');d.className='panel';const title=document.createElement('strong');title.textContent=r.programme_title+' · '+r.service;const st=document.createElement('div');st.className='status '+(['page_verified','playback_confirmed'].includes(r.verification_status)?'good':r.verification_status==='candidate'?'warn':'bad');st.textContent=(labels[r.verification_status]||r.verification_status)+(r.checked_at?' · checked '+new Date(r.checked_at).toLocaleString('en-GB'):'');d.append(title,st);if(r.candidate_url){const a=document.createElement('a');a.href=r.candidate_url;a.target='_blank';a.rel='noopener';a.textContent='Open saved candidate page';d.append(a)}if(r.notes){const n=document.createElement('div');n.className='note';n.textContent=r.notes;d.append(n)}host.append(d)});
+}
+async function start(){
+  $('signIn').disabled=true;showAuth('Connecting to Granary TV…');
+  if(!window.supabase){showAuth('The sign-in service did not load. Check your connection, refresh the page and try again.','bad');return}
+  try{
+    db=window.supabase.createClient(SUPABASE_URL,KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
+    const {data,error}=await db.auth.getSession();if(error)throw error;user=data.session?.user||null;
+    $('signIn').disabled=false;showAuth(user?'Signed in.':'Enter your Granary TV email and password.');await renderAuth();
+    db.auth.onAuthStateChange((_event,session)=>{const next=session?.user||null;/* V18: Supabase fires SIGNED_IN / TOKEN_REFRESHED again when you return to this tab (e.g. after Open to test). Only rebuild the page when a different person signs in or out, so the form is never reset under you. */if((next?.id||null)===(user?.id||null)){user=next;return}user=next;setTimeout(()=>renderAuth().catch(e=>showMessage('Could not load your library: '+e.message,'bad')),0)});
+  }catch(e){$('signIn').disabled=false;showAuth('Could not connect: '+(e.message||'Unknown error')+'. Refresh and try again.','bad')}
+}
+$('signIn').onclick=async()=>{
+  if(!db){showAuth('Still connecting. Wait a moment, then try again.','warn');return}
+  const email=$('email').value.trim(),password=$('password').value;
+  if(!email||!password){showAuth('Enter both your email address and password.','warn');return}
+  $('signIn').disabled=true;showAuth('Signing in…');
+  try{const {data,error}=await db.auth.signInWithPassword({email,password});if(error)throw error;user=data.user||data.session?.user||null;showAuth('Signed in successfully.','good');await renderAuth()}
+  catch(e){showAuth('Sign-in failed: '+(e.message||'Please check your email and password.'),'bad')}
+  finally{$('signIn').disabled=false}
+};
+$('password').addEventListener('keydown',e=>{if(e.key==='Enter')$('signIn').click()});
+$('signOut').onclick=async()=>{try{const {error}=await db.auth.signOut();if(error)throw error;user=null;await renderAuth();showAuth('Signed out.')}catch(e){showMessage('Sign-out failed: '+e.message,'bad')}};
+$('programme').onchange=loadRecord;$('service').onchange=loadRecord;
+['url','status','notes'].forEach(id=>$(id).addEventListener('input',()=>{formDirty=true}));
+$('status').addEventListener('change',()=>{formDirty=true});
+$('openUrl').onclick=()=>{const raw=$('url').value.trim();try{const parsed=new window.URL(raw);if(!['http:','https:'].includes(parsed.protocol))throw new Error();window.open(parsed.href,'_blank','noopener')}catch{showMessage('Enter a valid http or https URL first.','warn')}};
+$('clear').onclick=()=>{$('url').value='';$('status').value='candidate';$('notes').value='';showMessage('Fields cleared.')};
+$('save').onclick=async()=>{
+  if(recordLoading){showMessage('Please wait for the saved check to finish loading before saving.','warn');return}
+  const title=$('programme').value,service=$('service').value;if(!user){showMessage('Please sign in first.','warn');return}if(!title){showMessage('No saved programmes found. Add a programme to My Library first.','warn');return}
+  const raw=$('url').value.trim();if(raw){try{const parsed=new window.URL(raw);if(!['http:','https:'].includes(parsed.protocol))throw new Error()}catch{showMessage('Please enter a valid http or https URL.','warn');return}}
+  const stat=$('status').value;const row={user_id:user.id,normalized_title:norm(title),programme_title:title,service,candidate_url:raw||null,verification_status:stat,checked_at:stat==='candidate'?null:new Date().toISOString(),notes:$('notes').value.trim()||null,updated_at:new Date().toISOString()};
+  $('save').disabled=true;showMessage('Saving verification…');try{const {data:saved,error}=await db.from('programme_provider_links').upsert(row,{onConflict:'user_id,normalized_title,service'}).select('*').single();if(error)throw error;if(!saved)throw new Error('Supabase did not return the saved record.');if(saved.verification_status!==stat)throw new Error('Saved status did not match the selected status. Please retry; selected '+stat+', stored '+saved.verification_status+'.');formDirty=false;showMessage('Saved '+saved.programme_title+' · '+saved.service+': '+({candidate:'Candidate – not checked',page_verified:'Programme page verified',playback_confirmed:'Playback confirmed',broken:'Broken / wrong destination',not_available:'Not available on this service'}[saved.verification_status]||saved.verification_status)+'.','good');await listRecords()}catch(e){showMessage('Save failed: '+e.message,'bad')}finally{$('save').disabled=false}
+};
+start();
+</script></body></html>

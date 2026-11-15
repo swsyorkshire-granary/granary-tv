@@ -187,12 +187,27 @@ async function addSelectedToLibrary(){
   $('programmeMessage').textContent=error ? 'Could not save: '+error.message : 'Added to your library.';
 }
 let librarySearch='',libraryStatus='all',librarySort='newest';
+let granaryVerifiedLinksByTitle={};
+// Links saved in the Link Test Bench. Only page_verified / playback_confirmed are treated as trusted.
+async function loadGranaryVerifiedLinks(){
+  granaryVerifiedLinksByTitle={};
+  const {data,error}=await granaryClient.from('programme_provider_links').select('*');
+  if(error){console.warn('Verified programme links unavailable:',error.message);return error;}
+  (data||[]).forEach(r=>{granaryVerifiedLinksByTitle[r.normalized_title+'|'+r.service]=r;});
+  return null;
+}
+function getGranaryVerifiedLink(title,service){
+  const r=granaryVerifiedLinksByTitle[granaryNormaliseTitle(title)+'|'+service];
+  if(!r||!r.candidate_url||!['page_verified','playback_confirmed'].includes(r.verification_status))return null;
+  return r;
+}
 async function openLibrary(){
   if(!currentUser){openAuth();return;}
   $('libraryPanel').classList.add('open');$('libraryContent').textContent='Loading your programmes…';
   const {data,error}=await granaryClient.from('library_items').select('*').order('created_at',{ascending:false});
   if(error){$('libraryContent').textContent='Could not load library: '+error.message;return;}
   const metadataError=await loadGranaryMetadata();
+  await loadGranaryVerifiedLinks();
   if(!data.length){$('libraryContent').textContent='Your library is empty. Open a programme in the guide and choose Add to My Library.';return;}
   $('libraryContent').innerHTML='';
   if(metadataError){const setup=document.createElement('div');setup.className='providerNote';setup.textContent='Automatic programme artwork and matching will activate after the Granary TV metadata table is installed in Supabase.';$('libraryContent').append(setup);}
@@ -227,13 +242,14 @@ async function openLibrary(){
     const actions=document.createElement('div');actions.className='libraryCardActions';
     const primary=document.createElement('a');primary.className='primaryProvider';primary.target='_blank';primary.rel='noopener noreferrer';
     const known=GRANARY_KNOWN_PROGRAMME_URLS[String(titleText).trim().toLowerCase()]||{};
-    primary.href=known[service]||granaryProviderSearchUrl(service,titleText);
-    primary.textContent=known[service]?'Watch on '+service:'Search '+service+' for '+titleText;
-    primary.title=known[service]?'Verified programme-specific link':'Searches for this exact programme on '+service+'; availability is not confirmed';
+    const verifiedPrimary=getGranaryVerifiedLink(titleText,service);
+    primary.href=verifiedPrimary?.candidate_url||known[service]||granaryProviderSearchUrl(service,titleText);
+    primary.textContent=verifiedPrimary?(verifiedPrimary.verification_status==='playback_confirmed'?'Play on ':'Open ')+service:(known[service]?'Open '+service:'Search '+service+' for '+titleText);
+    primary.title=verifiedPrimary?'Saved '+verifiedPrimary.verification_status.replaceAll('_',' ')+' link'+(verifiedPrimary.checked_at?' · checked '+new Date(verifiedPrimary.checked_at).toLocaleDateString('en-GB'):''):(known[service]?'Programme-specific link configured':'Searches for this exact programme; availability is not confirmed');
     const more=document.createElement('button');more.className='moreProviders';more.textContent='Other services ▾';
     const extra=document.createElement('div');extra.className='providerExtra';
     const services=Array.isArray(currentUser?.user_metadata?.streaming_services)?currentUser.user_metadata.streaming_services:GRANARY_SERVICES;
-    services.filter(n=>n!==service).forEach(name=>{const a=document.createElement('a');a.className='watchLookup providerLookup';a.textContent='Search '+name+' for '+titleText;a.href=(known[name]||granaryProviderSearchUrl(name,titleText));a.target='_blank';a.rel='noopener noreferrer';extra.append(a)});
+    services.filter(n=>n!==service).forEach(name=>{const a=document.createElement('a');a.className='watchLookup providerLookup';const verified=getGranaryVerifiedLink(titleText,name);a.textContent=verified?'Open verified '+name:'Search '+name+' for '+titleText;a.href=verified?.candidate_url||known[name]||granaryProviderSearchUrl(name,titleText);a.title=verified?'Saved '+verified.verification_status.replaceAll('_',' '):'Search result; availability not confirmed';a.target='_blank';a.rel='noopener noreferrer';extra.append(a)});
     more.onclick=()=>{extra.classList.toggle('open');more.textContent=extra.classList.contains('open')?'Other services ▴':'Other services ▾'};
     actions.append(primary,more);
     const episodeToggle=document.createElement('button');episodeToggle.className='moreProviders';episodeToggle.textContent=items.length>1?'Show '+items.length+' saved entries ▾':'Show saved details ▾';
