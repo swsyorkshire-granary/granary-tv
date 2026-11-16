@@ -23,6 +23,7 @@
   document.addEventListener('focusin', e => { if (e.target && e.target !== document.body && e.target.matches && e.target.matches(FOCUSABLE)) lastKey = keyOf(e.target); }, true);
 
   function topLayer() {
+    const r = document.querySelector('.appReminder'); if (r) return r;
     const open = [...document.querySelectorAll(LAYERS)];
     if (!open.length) return document.body;
     // highest z-index wins; later in the page wins ties
@@ -124,18 +125,53 @@
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();
 
-  // Inside the Fire TV app: hand service links to the app with the programme title, so it can say what to search for.
+  // Inside the Fire TV app: hand service links to the app with the programme title.
+  // Services whose Fire TV app can't open a programme directly (iPlayer, ITVX, 5, …) get a reminder card first,
+  // showing exactly what to search for. Channel 4 opens the programme itself, so it goes straight through.
+  const DIRECT = /(^|\.)channel4\.com$/i;
+  const SERVICE_NAMES = [[/bbc\.co\.uk/i, 'BBC iPlayer'], [/itv\.com/i, 'ITVX'], [/channel5\.com/i, '5'], [/nowtv\.com|sky\.com/i, 'NOW'],
+    [/amazon\.|primevideo\./i, 'Prime Video'], [/disneyplus\./i, 'Disney+'], [/netflix\./i, 'Netflix'], [/u\.co\.uk|uktv/i, 'U']];
+  let reminder = null;
+  function closeReminder() { if (!reminder) return false; clearInterval(reminder.timer); reminder.el.remove(); const back = reminder.back; reminder = null; if (back && document.contains(back)) focusEl(back); return true; }
+  function showReminder(service, title, go) {
+    closeReminder();
+    const el = document.createElement('div');
+    el.className = 'appReminder';
+    el.innerHTML = '<div class="appReminderCard" role="dialog" aria-live="assertive"><div class="arSmall"></div><div class="arTitle"></div>' +
+      '<div class="arSteps"></div><div class="arButtons"><button class="arGo"></button><button class="arCancel">Cancel</button></div></div>';
+    el.querySelector('.arSmall').textContent = 'Opening ' + service + '…';
+    el.querySelector('.arTitle').textContent = title ? 'Search for: ' + title : 'Search for the programme there';
+    el.querySelector('.arSteps').textContent = service === 'BBC iPlayer' || service === 'ITVX'
+      ? 'Choose your profile if asked, then go to Search. ' + service + ' on Fire TV won\'t open a programme directly.'
+      : 'Go to Search in ' + service + ' and type the name above.';
+    document.body.appendChild(el);
+    let n = 4; const btn = el.querySelector('.arGo');
+    const tick = () => { btn.textContent = 'Open ' + service + ' now (' + n + ')'; if (n-- <= 0) { closeReminder(); go(); } };
+    reminder = { el, back: document.activeElement, timer: setInterval(tick, 1000) }; tick();
+    btn.onclick = () => { closeReminder(); go(); };
+    el.querySelector('.arCancel').onclick = () => closeReminder();
+    setTimeout(() => focusEl(btn), 30);
+  }
+  window.granaryShowReminder = showReminder; // for tests
   document.addEventListener('click', e => {
-    const a = e.target.closest && e.target.closest('a.primaryProvider, a.providerLookup, a.watchLookup');
+    const a = e.target.closest && e.target.closest('a.primaryProvider, a.providerLookup, a.watchLookup, a.providerExtra');
     if (!a || !window.GranaryApp || typeof window.GranaryApp.openWithTitle !== 'function') return;
     const card = a.closest('.libraryRow, .modal, [data-title]');
     const t = (a.dataset.title || (card && (card.querySelector('.libraryTitle, #modalTitle') || {}).textContent) || '').trim();
     e.preventDefault();
-    window.GranaryApp.openWithTitle(a.href, t);
+    let host = ''; try { host = new URL(a.href).hostname; } catch (err) {}
+    const go = () => window.GranaryApp.openWithTitle(a.href, t);
+    if (DIRECT.test(host)) return go();
+    const label = a.textContent || '';
+    const named = ['BBC iPlayer', 'ITVX', 'Channel 5', 'My5', 'NOW', 'Prime Video', 'Disney+', 'Netflix', 'U'].find(n => new RegExp('\\b' + n.replace('+', '\\+') + '(\\b|$)').test(label));
+    if (/\bChannel 4\b/.test(label) && !named) return go();
+    const svc = named || (SERVICE_NAMES.find(([re]) => re.test(host)) || [null, 'the app'])[1];
+    showReminder(svc, t, go);
   }, true);
 
   // Back button: close the top panel. Returns true if something was closed.
   window.granaryBack = function () {
+    if (closeReminder()) return true;
     const layer = topLayer();
     if (layer === document.body) return false;
     const closeBtn = [...layer.querySelectorAll('button')].find(b => /close|✕|cancel/i.test(b.textContent) || b.id === 'close');

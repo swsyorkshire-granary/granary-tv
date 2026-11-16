@@ -1,0 +1,37 @@
+// Drive tv.html with the remote only (arrows, Enter, Escape/Back) in a 1920x1080 window.
+import { chromium } from 'playwright';
+import http from 'node:http'; import fs from 'node:fs'; import path from 'node:path';
+const root = path.resolve(path.dirname(new URL(import.meta.url).pathname), '../site');
+const server = http.createServer((q, r) => { let p = new URL(q.url, 'http://x').pathname; const f = path.join(root, p); if (!fs.existsSync(f)) { r.writeHead(404); return r.end(); } r.writeHead(200, { 'content-type': f.endsWith('.js') ? 'text/javascript' : f.endsWith('.css') ? 'text/css' : 'text/html' }); fs.createReadStream(f).pipe(r); }).listen(0);
+const base = `http://127.0.0.1:${server.address().port}`;
+const stub = `(()=>{window.__db={library_items:[{id:'a',title:'Vera',channel:'ITV3 HD',status:'wanted',created_at:'2026-11-01'},{id:'b',title:'The Great British Bake Off',channel:'Channel 4',status:'wanted',created_at:'2026-11-02'}],programme_metadata:[],programme_provider_links:[{normalized_title:'vera',service:'ITVX',candidate_url:'https://www.itv.com/watch/vera/1a7314',verification_status:'page_verified'},{normalized_title:'thegreatbritishbakeoff',service:'Channel 4',candidate_url:'https://www.channel4.com/programmes/the-great-british-bake-off',verification_status:'page_verified'}]};
+function q(t){const st={op:'select'};const p={select(){return p},eq(){return p},order(){return p},limit(){return p},in(){return p},maybeSingle(){st.one=1;return p},single(){st.one=1;return p},insert(r){st.op='w';st.row=r;return p},upsert(r){st.op='w';st.row=r;return p},update(r){st.op='w';st.row=r;return p},delete(){st.op='w';return p},then(a,b){let d=st.op==='w'?st.row:(window.__db[t]||[]);if(st.op==='w'&&st.row&&!Array.isArray(st.row)){const L=window.__db[t]=window.__db[t]||[];const i=L.findIndex(x=>x.normalized_title&&x.normalized_title===st.row.normalized_title);if(i>=0)L[i]=st.row;else L.push(st.row);}if(st.one&&Array.isArray(d))d=d[0]||null;return Promise.resolve({data:d,error:null}).then(a,b)}};return p}
+const u={id:'u1',email:'t@example.com',user_metadata:{}};window.supabase={createClient(){return{from:q,auth:{getSession:()=>Promise.resolve({data:{session:{user:u}}}),getUser:()=>Promise.resolve({data:{user:u}}),onAuthStateChange(){return{data:{subscription:{unsubscribe(){}}}}},signOut:()=>Promise.resolve({})}}}};})();`;
+let fail = 0; const check = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); if (!c) fail++; };
+const b = await chromium.launch({ executablePath: '/usr/bin/google-chrome' });
+const page = await (await b.newContext({ viewport: { width: 1920, height: 1080 } })).newPage();
+await page.addInitScript(() => { window.__opened = []; window.GranaryApp = { isApp: () => true, openWithTitle(u, t) { window.__opened.push(u + '|' + t); }, launch() { return 'started' }, launchIntentUri() { return 'started' } }; });
+const errs = []; page.on('pageerror', e => errs.push(String(e)));
+await page.route('https://cdn.jsdelivr.net/**', r => r.fulfill({ contentType: 'text/javascript', body: stub }));
+await page.route('https://api.tvmaze.com/**', r => r.fulfill({ contentType: 'application/json', body: '[]' }));
+await page.route('https://www.ontvnow.co.uk/**', r => { const u = new URL(r.request().url()); if (u.pathname.endsWith('/channels')) return r.fulfill({ contentType: 'application/json', body: JSON.stringify({ data: [{ id: 3, name: 'BBC One Yorkshire' }, { id: 9, name: 'ITV1 Yorkshire' }] }) });
+  const d = new Date(); d.setHours(0, 0, 0, 0); const out = []; for (let h = 0; h < 24; h += 1) { const s = new Date(+d + h * 36e5); out.push({ title: 'P' + u.searchParams.get('channel_id') + '-' + h, start: s.toISOString(), end: new Date(+s + 36e5).toISOString() }); } return r.fulfill({ contentType: 'application/json', body: JSON.stringify({ data: out }) }); });
+await page.goto(base + '/tv.html'); await page.waitForSelector('.program'); await page.waitForTimeout(400);
+await page.evaluate(() => document.getElementById('libraryBtn').click()); await page.waitForTimeout(800);
+const clickLink = async (re, show) => page.evaluate(([src, show]) => { const r = new RegExp(src); const row = [...document.querySelectorAll('#libraryContent *')].filter(x => x.textContent.includes(show) && x.querySelector('a') && !x.textContent.includes(show === 'Vera' ? 'Bake Off' : 'Vera')).sort((p, q) => p.querySelectorAll('*').length - q.querySelectorAll('*').length).pop(); const a = [...row.querySelectorAll('a')].find(x => r.test(x.textContent)); a.click(); return a.textContent; }, [re.source, show]);
+console.log('   clicked:', await clickLink(/ITVX/, 'Vera'));
+await page.waitForTimeout(200);
+const card = await page.evaluate(() => { const c = document.querySelector('.appReminder'); return c ? c.querySelector('.arSmall').textContent + ' / ' + c.querySelector('.arTitle').textContent : null; });
+check(card === 'Opening ITVX… / Search for: Vera', 'ITVX shows reminder card: ' + card);
+check(await page.evaluate(() => document.activeElement.classList.contains('arGo')), 'focus is on the Open button');
+check((await page.evaluate(() => window.__opened.length)) === 0, 'app not opened until confirmed');
+await page.evaluate(() => window.granaryBack()); await page.waitForTimeout(100);
+check(!(await page.$('.appReminder')) && (await page.evaluate(() => window.__opened.length)) === 0, 'Back cancels the card');
+await clickLink(/ITVX/, 'Vera'); await page.waitForTimeout(150); await page.keyboard.press('Enter'); await page.waitForTimeout(150);
+check((await page.evaluate(() => window.__opened[0] || '')) === 'https://www.itv.com/watch/vera/1a7314|Vera', 'OK opens ITVX with the title');
+await clickLink(/ITVX/, 'Vera'); await page.waitForTimeout(4800);
+check((await page.evaluate(() => window.__opened.length)) === 2 && !(await page.$('.appReminder')), 'card opens the app by itself after the countdown');
+console.log('   clicked:', await clickLink(/Channel 4/, 'Bake Off')); await page.waitForTimeout(150);
+check(!(await page.$('.appReminder')) && (await page.evaluate(() => window.__opened.at(-1))).startsWith('https://www.channel4.com/programmes/the-great-british-bake-off|'), 'Channel 4 opens straight away (no card)');
+check(errs.length === 0, 'no errors ' + errs.join(' | '));
+await b.close(); server.close(); console.log(fail ? fail + ' FAILED' : 'ALL PASSED'); process.exit(fail ? 1 : 0);

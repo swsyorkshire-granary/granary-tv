@@ -233,7 +233,7 @@ public class MainActivity extends Activity {
         @JavascriptInterface public boolean isApp() { return true; }
         @JavascriptInterface public String version() { return BuildConfig.VERSION_NAME; }
         @JavascriptInterface public void open(String url) { runOnUiThread(() -> openExternal(Uri.parse(url))); }
-        /** Deep Link Lab: installed TV apps as JSON [{label,pkg}] */
+        /** Installed TV apps as JSON [{label,pkg}] */
         @JavascriptInterface public String apps() {
             try {
                 JSONArray out = new JSONArray(); PackageManager pm = getPackageManager(); java.util.Set<String> seen = new java.util.HashSet<>();
@@ -244,129 +244,12 @@ public class MainActivity extends Activity {
             } catch (Exception e) { return "[]"; }
         }
         /** Deep Link Lab: read another app's manifest and list every intent filter that has links (data). */
-        public String manifestViaAssets(String pkg) {
-            try {
-                JSONObject out = new JSONObject();
-                android.content.pm.PackageInfo pi = getPackageManager().getPackageInfo(pkg, 0);
-                out.put("package", pkg).put("version", pi.versionName);
-                android.content.Context other = createPackageContext(pkg, 0);
-                android.content.res.XmlResourceParser x = other.getAssets().openXmlResourceParser("AndroidManifest.xml");
-                JSONArray filters = new JSONArray();
-                String activity = null; JSONObject filter = null;
-                for (int ev = x.getEventType(); ev != org.xmlpull.v1.XmlPullParser.END_DOCUMENT; ev = x.next()) {
-                    if (ev == org.xmlpull.v1.XmlPullParser.START_TAG) {
-                        String tag = x.getName();
-                        JSONObject attrs = new JSONObject();
-                        for (int i = 0; i < x.getAttributeCount(); i++) {
-                            String n = x.getAttributeName(i);
-                            int res = x.getAttributeNameResource(i);
-                            if (n == null || n.isEmpty()) {
-                                switch (res) { case 0x01010003: n = "name"; break; case 0x01010026: n = "mimeType"; break; case 0x01010027: n = "scheme"; break;
-                                    case 0x01010028: n = "host"; break; case 0x01010029: n = "port"; break; case 0x0101002a: n = "path"; break;
-                                    case 0x0101002b: n = "pathPrefix"; break; case 0x0101002c: n = "pathPattern"; break; default: n = "0x" + Integer.toHexString(res); }
-                            }
-                            attrs.put(n, x.getAttributeValue(i));
-                        }
-                        if (tag.equals("activity") || tag.equals("activity-alias")) { activity = attrs.optString("name"); }
-                        else if (tag.equals("intent-filter")) { filter = new JSONObject().put("activity", activity).put("actions", new JSONArray()).put("categories", new JSONArray()).put("data", new JSONArray()); }
-                        else if (filter != null && tag.equals("action")) filter.getJSONArray("actions").put(attrs.optString("name"));
-                        else if (filter != null && tag.equals("category")) filter.getJSONArray("categories").put(attrs.optString("name"));
-                        else if (filter != null && tag.equals("data")) filter.getJSONArray("data").put(attrs);
-                    } else if (ev == org.xmlpull.v1.XmlPullParser.END_TAG) {
-                        if (x.getName().equals("intent-filter") && filter != null) { if (filter.getJSONArray("data").length() > 0) filters.put(filter); filter = null; }
-                        else if (x.getName().equals("activity") || x.getName().equals("activity-alias")) activity = null;
-                    }
-                }
-                out.put("filters", filters);
-                return out.toString();
-            } catch (Throwable e) {
-                try { return new JSONObject().put("package", pkg).put("error", e.getClass().getSimpleName() + ": " + e.getMessage()).toString(); } catch (Exception ignored) { return "{}"; }
-            }
-        }
-        /** Deep Link Lab: read the app's installed APK file(s) directly and list intent filters with link data. */
-        @JavascriptInterface public String manifest(String pkg) {
-            try {
-                android.content.pm.ApplicationInfo ai = getPackageManager().getApplicationInfo(pkg, 0);
-                android.content.pm.PackageInfo pi = getPackageManager().getPackageInfo(pkg, 0);
-                JSONObject out = new JSONObject().put("package", pkg).put("version", pi.versionName).put("source", "apk");
-                JSONObject base = Axml.scanApk(ai.sourceDir);
-                out.put("manifestPackage", base.optString("manifestPackage")).put("filters", base.get("filters"));
-                JSONArray splits = new JSONArray();
-                if (ai.splitSourceDirs != null) for (String sp : ai.splitSourceDirs) {
-                    try { JSONObject r = Axml.scanApk(sp); if (r.getJSONArray("filters").length() > 0) splits.put(r.put("apk", sp)); }
-                    catch (Exception ex) { splits.put(new JSONObject().put("apk", sp).put("error", ex.getMessage())); }
-                }
-                out.put("splits", splits);
-                return out.toString();
-            } catch (Throwable e) {
-                String fallback = manifestViaAssets(pkg);
-                try { return new JSONObject(fallback).put("apkError", e.getClass().getSimpleName() + ": " + e.getMessage()).toString(); } catch (Exception ignored) { return fallback; }
-            }
-        }
-        /** Deep Link Lab: link-related text inside an app (route patterns, intent extra names). */
-        @JavascriptInterface public String strings(String pkg, String regex) {
-            try {
-                android.content.pm.ApplicationInfo ai = getPackageManager().getApplicationInfo(pkg, 0);
-                java.util.List<String> apks = new java.util.ArrayList<>(); apks.add(ai.sourceDir);
-                if (ai.splitSourceDirs != null) java.util.Collections.addAll(apks, ai.splitSourceDirs);
-                JSONArray a = new JSONArray();
-                for (String s : DexStrings.find(apks, java.util.regex.Pattern.compile(regex), 600)) a.put(s);
-                return new JSONObject().put("package", pkg).put("kind", "strings").put("regex", regex).put("strings", a).toString();
-            } catch (Throwable e) {
-                try { return new JSONObject().put("package", pkg).put("kind", "strings").put("error", e.getClass().getSimpleName() + ": " + e.getMessage()).toString(); } catch (Exception ignored) { return "{}"; }
-            }
-        }
-        /** Deep Link Lab: send a search to an app (Intent.ACTION_SEARCH with a query). */
-        @JavascriptInterface public String search(String pkg, String cls, String query) {
-            try {
-                Intent i = new Intent(Intent.ACTION_SEARCH).putExtra(android.app.SearchManager.QUERY, query).putExtra("query", query).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                if (cls != null && !cls.isEmpty()) i.setClassName(pkg, cls); else i.setPackage(pkg);
-                startActivity(i); return "started";
-            } catch (Exception e) { return "error: " + e.getClass().getSimpleName() + " " + e.getMessage(); }
-        }
-        /** Deep Link Lab: ask for permission to read the Fire TV channel guide data (shows a system prompt). */
-        @JavascriptInterface public String askEpgPermission() {
-            try {
-                if (android.os.Build.VERSION.SDK_INT >= 23 && checkSelfPermission("com.android.providers.tv.permission.READ_EPG_DATA") != PackageManager.PERMISSION_GRANTED) {
-                    runOnUiThread(() -> requestPermissions(new String[]{"com.android.providers.tv.permission.READ_EPG_DATA"}, 77));
-                    return "asked";
-                }
-                return "granted";
-            } catch (Exception e) { return "error: " + e.getMessage(); }
-        }
-        /** Deep Link Lab: read what streaming apps registered with the Fire TV guide (channels, continue-watching, previews) incl. their play intents. */
-        @JavascriptInterface public String tvProvider() {
-            JSONObject out = new JSONObject();
-            String[][] tables = {{"channels", "content://android.media.tv/channel"}, {"watchNext", "content://android.media.tv/watch_next_program"}, {"previews", "content://android.media.tv/preview_program"}};
-            for (String[] t : tables) {
-                JSONArray rows = new JSONArray();
-                try (android.database.Cursor c = getContentResolver().query(Uri.parse(t[1]), null, null, null, null)) {
-                    if (c == null) { out.put(t[0] + "Error", "null cursor"); continue; }
-                    String[] cols = c.getColumnNames();
-                    int n = 0;
-                    while (c.moveToNext() && n++ < 120) {
-                        JSONObject r = new JSONObject();
-                        for (int i = 0; i < cols.length; i++) {
-                            String col = cols[i];
-                            if (!(col.contains("intent") || col.contains("link") || col.contains("package") || col.contains("title") || col.contains("display_name") || col.contains("display_number")
-                                || col.contains("input_id") || col.contains("internal_provider") || col.contains("content_id") || col.equals("type") || col.contains("channel_id"))) continue;
-                            int ty = c.getType(i);
-                            if (ty == android.database.Cursor.FIELD_TYPE_BLOB) { byte[] b = c.getBlob(i); if (b != null) r.put(col, new String(b, java.nio.charset.StandardCharsets.UTF_8).replaceAll("[^\\x20-\\x7e]", ".")); }
-                            else if (ty != android.database.Cursor.FIELD_TYPE_NULL) r.put(col, c.getString(i));
-                        }
-                        rows.put(r);
-                    }
-                    try { out.put(t[0], rows); } catch (Exception ignored) { }
-                } catch (Throwable e) { try { out.put(t[0] + "Error", e.getClass().getSimpleName() + ": " + e.getMessage()); } catch (Exception ignored) { } }
-            }
-            return out.toString();
-        }
-        /** Deep Link Lab: fire an intent written as an Android intent URI (intent:#Intent;...;end), as the Fire TV guide would. */
+            /** Deep Link Lab: which activities say they can open this link */
+        /** Fire an intent written as an Android intent URI (intent:#Intent;...;end). Used by Watch live for ITV channels. */
         @JavascriptInterface public String launchIntentUri(String uri) {
             try { Intent i = Intent.parseUri(uri, Intent.URI_INTENT_SCHEME); i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK); startActivity(i); return "started"; }
             catch (Exception e) { return "error: " + e.getClass().getSimpleName() + " " + e.getMessage(); }
         }
-        /** Deep Link Lab: which activities say they can open this link */
         @JavascriptInterface public String resolve(String uri) {
             try {
                 JSONArray out = new JSONArray();
@@ -375,7 +258,7 @@ public class MainActivity extends Activity {
                 return out.toString();
             } catch (Exception e) { return "[]"; }
         }
-        /** Deep Link Lab: fire exactly this intent (optional package / class), bypassing Granary's own routing */
+        /** Fire exactly this intent (optional package / class). Used by Watch live for Channel 4. */
         @JavascriptInterface public String launch(String uri, String pkg, String cls) {
             try {
                 Intent i = new Intent(Intent.ACTION_VIEW, Uri.parse(uri)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);

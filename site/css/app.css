@@ -74,3 +74,13 @@ html.remoteNav :focus{outline:4px solid #ffd37b!important;outline-offset:2px;box
 /* ▶ Watch live button in the programme sheet */
 .watchLive{display:inline-block;margin:0 0 14px;padding:14px 22px;border-radius:12px;background:#c0392b;color:#fff!important;font-weight:800;font-size:1.15em;text-decoration:none}
 .watchLive:hover,.watchLive:focus{background:#e74c3c}
+
+/* Reminder card shown before opening an app that can't jump to the programme (Fire TV app) */
+.appReminder{position:fixed;inset:0;z-index:9999;background:rgba(5,10,20,.82);display:flex;align-items:center;justify-content:center}
+.appReminderCard{background:#16243a;border:2px solid #2b628d;border-radius:22px;padding:42px 56px;max-width:1100px;width:80%;text-align:center;box-shadow:0 20px 60px #0008}
+.arSmall{font-size:30px;color:#9cd;margin-bottom:14px}
+.arTitle{font-size:52px;font-weight:800;color:#fff;line-height:1.15;margin-bottom:18px}
+.arSteps{font-size:24px;color:#c9d6e6;margin-bottom:30px}
+.arButtons{display:flex;gap:18px;justify-content:center}
+.arButtons button{font-size:26px;padding:16px 28px;border-radius:14px;border:0;background:#2b628d;color:#fff}
+.arButtons .arCancel{background:#33445e}
