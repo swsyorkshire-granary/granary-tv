@@ -54,8 +54,11 @@ await page.click('#later'); check((await page.textContent('#windowLabel')).start
 await page.click('#tabLibrary'); await page.waitForTimeout(600);
 check(await page.locator('.st').count() === 2, 'library tab shows 2 shows: ' + await page.locator('.st').count());
 check((await page.locator('.st').first().textContent()).includes('Vera'), 'show on now/next sorted first');
+check(/READY|ON NOW/.test(await page.locator('.st', { hasText: 'Vera' }).textContent()), 'Vera (already shown) marked ready / on now');
+check(/COMING UP/.test(await page.locator('.st', { hasText: 'Coast' }).textContent()), 'Coast (not shown yet) marked COMING UP');
 await page.locator('.st', { hasText: 'Coast' }).click();
 check((await page.textContent('#panel h1')).startsWith('Coast'), 'library tile selects into panel');
+check(/Not shown yet/.test(await page.textContent('#panel .meta')) && /yet/.test(await page.textContent('#panel .primaryProvider')), 'panel says not shown yet and the watch button is toned down');
 const before = await page.evaluate(() => window.__ops.length);
 await page.locator('#panel button', { hasText: 'Series' }).click(); await page.waitForTimeout(800);
 const up = await page.evaluate(n => window.__ops.slice(n).find(o => o.op === 'update' && 'series_auto' in (o.row || {})), before);

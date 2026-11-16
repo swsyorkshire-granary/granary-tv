@@ -225,7 +225,8 @@
       const lastAired = items.reduce((m, x) => x.last_aired_at && new Date(x.last_aired_at) > m ? new Date(x.last_aired_at) : m, new Date(0));
       const seen = items.reduce((m, x) => { const t = new Date(x.series_seen_at || x.created_at || 0); return t > m ? t : m; }, new Date(0));
       const title = items[0].title.replace(/^\s*(new|live)\s*:\s*/i, '');
-      return { key, title, items, next: next && (nextEnd || next) > now ? next : null, nextEnd, onNow: !!(next && next <= now && nextEnd && nextEnd > now),
+      const aired = lastAired.getTime() > 0 || items.some(x => x.end_at && new Date(x.end_at) <= now);
+      return { key, title, items, aired, next: next && (nextEnd || next) > now ? next : null, nextEnd, onNow: !!(next && next <= now && nextEnd && nextEnd > now),
         channel: i.next_airing_channel || items[0].channel || '', linked: items.some(x => x.series_link), isNew: lastAired > seen,
         meta: [granaryNormaliseTitle(title), granaryNormaliseTitle(items[0].title)].map(k => granaryMetadataByTitle[k]).find(r => r && r.match_status === 'matched') || granaryMetadataByTitle[granaryNormaliseTitle(title)] };
     });
@@ -243,7 +244,7 @@
   function sortedGroups() {
     const g = [...NX.groups];
     g.sort((a, b) => (b.onNow - a.onNow) || ((a.next ? 0 : 1) - (b.next ? 0 : 1)) || ((a.next || 0) - (b.next || 0)) || a.title.localeCompare(b.title));
-    const f = { all: () => true, week: x => !!x.next, linked: x => x.linked, new: x => x.isNew }[NX.libFilter] || (() => true);
+    const f = { all: () => true, ready: x => x.aired || x.onNow, soon: x => !x.aired && !x.onNow, linked: x => x.linked, new: x => x.isNew }[NX.libFilter] || (() => true);
     return g.filter(f);
   }
   const TINTS = ['#e7f4f1', '#f1ecfd', '#eef1f5', '#fdeef0', '#f2f5ea', '#fdf3e3', '#e8f0fb', '#f5ecf4'];
@@ -256,9 +257,9 @@
       return;
     }
     chips.hidden = false;
-    const counts = { all: NX.groups.length, week: NX.groups.filter(x => x.next).length, linked: NX.groups.filter(x => x.linked).length, new: NX.groups.filter(x => x.isNew).length };
-    [['all', 'All'], ['week', 'On this week'], ['linked', 'Series linked'], ['new', 'New episodes']].forEach(([k, l]) => {
-      if (k === 'new' && !counts.new && NX.libFilter !== 'new') return;
+    const counts = { all: NX.groups.length, ready: NX.groups.filter(x => x.aired || x.onNow).length, soon: NX.groups.filter(x => !x.aired && !x.onNow).length, linked: NX.groups.filter(x => x.linked).length, new: NX.groups.filter(x => x.isNew).length };
+    [['all', 'All'], ['ready', '✓ Ready to watch'], ['soon', '⏰ Coming up'], ['linked', 'Series linked'], ['new', 'New episodes']].forEach(([k, l]) => {
+      if ((k === 'new' || k === 'soon') && !counts[k] && NX.libFilter !== k) return;
       const c = h('button', 'chip' + (NX.libFilter === k ? ' on' : ''), l + ' ' + counts[k]); c.onclick = () => { NX.libFilter = k; renderLibrary(); }; chips.append(c);
     });
     const list = sortedGroups();
@@ -271,10 +272,13 @@
       const art = h('div', 'art'); art.append(h('span', '', g.channel.replace(/\s+HD$/i, '') || 'Granary TV'));
       if (g.meta && g.meta.match_status === 'matched' && g.meta.image_url) { art.style.backgroundImage = 'url("' + g.meta.image_url + '")'; art.classList.add('img'); }
       else art.style.background = TINTS[Math.abs([...g.key].reduce((a, c) => a + c.charCodeAt(0), 0)) % TINTS.length];
-      if (g.isNew) art.append(h('em', '', 'NEW'));
+      const state = g.onNow ? ['live', '● ON NOW'] : g.aired ? ['ready', '✓ READY'] : ['soon', '⏰ COMING UP'];
+      art.append(h('em', 'state ' + state[0], g.isNew && g.aired && !g.onNow ? '✓ NEW EPISODE' : state[1]));
+      t.classList.add('is-' + state[0]);
       const sm = h('small');
       if (g.onNow) { sm.append(h('span', 'live', '● On now'), document.createTextNode(' · ' + (g.channel || ''))); }
-      else sm.textContent = g.next ? fmtWhen(g.next) : 'Not on in the next 7 days';
+      else if (!g.aired) sm.textContent = g.next ? 'First shown ' + fmtWhen(g.next) : 'Not shown yet';
+      else sm.textContent = 'Ready to watch' + (g.next ? ' · next ' + fmtWhen(g.next) : '');
       t.append(art, h('b', '', (g.linked ? '🔗 ' : '') + g.title), sm);
       t.onclick = () => selectShow(g.key, true);
       t.onfocus = () => { if (NX.libSel !== g.key) selectShow(g.key, false); };
@@ -297,16 +301,21 @@
     const panel = $('panel'), g = NX.groups.find(x => x.key === NX.libSel);
     if (!g) { panel.innerHTML = ''; return; }
     const text = h('div', 'infoText');
-    let when = g.onNow ? (g.channel + ' · on now') : g.next ? ('Next: ' + fmtWhen(g.next) + ' · ' + g.channel) : ((g.channel ? g.channel + ' · ' : '') + 'not on in the next 7 days – checked daily');
+    let when = g.onNow ? (g.channel + ' · on now')
+      : !g.aired ? (g.next ? 'Not shown yet – first showing ' + fmtWhen(g.next) + ' on ' + g.channel : 'Not shown yet')
+      : g.next ? ('Ready to watch · next showing ' + fmtWhen(g.next) + ' · ' + g.channel) : ('Ready to watch · ' + (g.channel || '') + ' · no showings in the next 7 days');
     text.append(h('div', 'meta', when));
-    const t = h('h1', '', g.title); if (g.linked) t.append(h('span', 'tag', 'SERIES LINKED')); if (g.isNew) t.append(h('span', 'tag', 'NEW EPISODE'));
+    const t = h('h1', '', g.title); if (!g.aired && !g.onNow) t.append(h('span', 'tag soon', 'COMING UP')); else if (!g.onNow) t.append(h('span', 'tag ok', 'READY TO WATCH')); if (g.linked) t.append(h('span', 'tag', 'SERIES LINKED')); if (g.isNew && g.aired) t.append(h('span', 'tag', 'NEW EPISODE'));
     const desc = (g.meta && g.meta.match_status === 'matched' && g.meta.summary) || g.items.find(i => i.description)?.description || '';
     text.append(t, h('p', 'desc', desc));
     const msg = h('div', 'msg'); msg.id = 'programmeMessage'; text.append(msg);
     const acts = h('div', 'acts'), seen = () => granaryMarkSeriesSeen(g.items);
     if (g.onNow) { const w = watchLiveBtn(channelObj(g.channel)); if (w) { w.addEventListener('click', seen); acts.append(w); } }
     const service = providerForChannel(g.items[0].channel || g.channel);
-    acts.append(providerBtn(g.title, service, 'btn' + (acts.children.length ? '' : ' p'), seen));
+    const ready = g.aired || g.onNow;
+    const pb = providerBtn(g.title, service, 'btn' + (acts.children.length || !ready ? '' : ' p'), seen);
+    if (!ready) { pb.textContent = 'Not on ' + service + ' yet – check anyway'; pb.title = 'It hasn\u2019t been shown yet, so it probably isn\u2019t on ' + service + ' until after ' + (g.next ? fmtWhen(g.next) : 'it airs'); }
+    acts.append(pb);
     const sb = h('button', 'btn', g.linked ? '🔗 Series: On' : '🔗 Series: Off');
     sb.onclick = async () => { sb.disabled = true; await granarySetSeriesLink(g.items, !g.linked); };
     acts.append(sb);
