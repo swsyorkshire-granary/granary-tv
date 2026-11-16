@@ -27,7 +27,7 @@ check(found, 'can reach My Library with arrows: ' + await act());
 await page.keyboard.press('Enter'); await page.waitForTimeout(700);
 const inLib = await page.evaluate(() => document.getElementById('libraryPanel').contains(document.activeElement));
 check(inLib, 'opening library moves focus into it: ' + await act());
-const seen = new Set(); for (const k of ['ArrowDown','ArrowDown','ArrowDown','ArrowLeft','ArrowUp','ArrowLeft','ArrowRight','ArrowRight']) { const r = await key(k); console.log('   ', k, '->', r); seen.add(r); }
+const seen = new Set(); for (let i = 0; i < 4; i++) { const r = await key('ArrowDown'); seen.add(r); if (/primaryProvider/.test(r)) break; } for (let i = 0; i < 4; i++) { const r = await key('ArrowLeft'); seen.add(r); console.log('    left ->', r); if (/ITVX/.test(r)) break; }
 console.log('   library stops:', [...seen].join(' || '));
 check([...seen].some(s => /ITVX/.test(s)), 'can reach the Open ITVX button by remote');
 check(await page.evaluate(() => document.getElementById('libraryPanel').contains(document.activeElement)), 'focus stays inside the library');

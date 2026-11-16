@@ -179,6 +179,13 @@ async function addSelectedToLibrary(){
   if(!currentUser){$('programmeMessage').textContent='Please sign in first.';return;}
   if(!selectedProgramme)return;
   const p=selectedProgramme.p, ch=selectedProgramme.ch;
+  const {data:existingItems}=await granaryClient.from('library_items').select('id,title');
+  const same=(existingItems||[]).filter(r=>granarySeriesKey(r.title)===granarySeriesKey(p.title));
+  if(same.length){
+    await granaryClient.from('library_items').update({series_link:true,series_auto:false}).in('id',same.map(r=>r.id));
+    $('programmeMessage').textContent='Already in your library – series link switched on, so every showing is tracked.';
+    granarySeriesBackground();return;
+  }
   const {error}=await granaryClient.from('library_items').insert({
     user_id:currentUser.id,title:p.title,item_type:'programme',channel:ch.display,
     description:p.description||null,start_at:p.start.toISOString(),end_at:p.end.toISOString(),
@@ -190,6 +197,73 @@ async function addSelectedToLibrary(){
     const found=await granaryAutoFindLinks(p.title);
     $('programmeMessage').textContent=found.length?'Added to your library. Found it on '+found.join(', ')+'.':'Added to your library. No exact match found on iPlayer, ITVX, Channel 4 or 5 yet.';
   }catch(e){$('programmeMessage').textContent='Added to your library.';}
+}
+
+// ── Series links ────────────────────────────────────────────────────────────
+// Uses the 7-day listings the guide has already loaded (all your channels). Runs every time the guide loads,
+// so as each new day enters the rolling schedule its showings are picked up automatically.
+window.granarySeriesTitles=new Set();
+function granarySeriesShowings(title){
+  const key=granarySeriesKey(title),out=[];
+  if(typeof weekOffset!=='undefined'&&weekOffset!==0)return null; // only the current week tells us what's next
+  (channels||[]).forEach(ch=>(dataByChannel[ch.id]||[]).forEach(p=>{if(granarySeriesKey(p.title)===key)out.push({start:p.start,end:p.end,channel:ch.display})}));
+  return out.sort((a,b)=>a.start-b.start);
+}
+let granarySeriesRunning=false;
+async function granarySeriesBackground(){
+  if(granarySeriesRunning||!currentUser||typeof dataByChannel==='undefined')return;
+  if(!Object.keys(dataByChannel).length)return;
+  granarySeriesRunning=true;
+  try{
+    const {data,error}=await granaryClient.from('library_items').select('*');
+    if(error||!data)return;
+    const groups=new Map();data.forEach(r=>{const k=granarySeriesKey(r.title);if(!groups.has(k))groups.set(k,[]);groups.get(k).push(r)});
+    const now=new Date();let changed=false;const linked=new Set();
+    for(const [key,items] of groups){
+      const shows=granarySeriesShowings(items[0].title);if(!shows)continue;
+      const next=shows.find(s=>s.end>now)||null;
+      const last=[...shows].reverse().find(s=>s.end<=now)||null;
+      const savedStarts=new Set(items.map(i=>i.start_at&&new Date(i.start_at).getTime()));
+      const anotherShowing=shows.some(s=>!savedStarts.has(s.start.getTime()));
+      const auto=items.every(i=>i.series_auto!==false);
+      let on=items.some(i=>i.series_link);
+      if(!on&&auto&&anotherShowing)on=true; // found another showing → series link on automatically
+      if(on)linked.add(key);
+      const upd={series_link:on,next_airing_at:next?next.start.toISOString():null,next_airing_end:next?next.end.toISOString():null,next_airing_channel:next?next.channel:null,series_checked_at:now.toISOString()};
+      const prevLast=items.reduce((m,i)=>i.last_aired_at&&new Date(i.last_aired_at)>m?new Date(i.last_aired_at):m,new Date(0));
+      if(last&&last.end>prevLast)upd.last_aired_at=last.end.toISOString();
+      const i0=items[0];
+      const differs=i0.series_link!==upd.series_link||(i0.next_airing_at?new Date(i0.next_airing_at).toISOString():null)!==upd.next_airing_at||i0.next_airing_channel!==upd.next_airing_channel||upd.last_aired_at;
+      const stale=!i0.series_checked_at||now-new Date(i0.series_checked_at)>6*36e5;
+      if(differs||stale){await granaryClient.from('library_items').update(upd).in('id',items.map(i=>i.id));if(differs)changed=true;}
+    }
+    window.granarySeriesTitles=linked;
+    if(linked.size&&typeof render==='function')render();
+    if(changed&&$('libraryPanel').classList.contains('open'))openLibrary();
+  }catch(e){console.warn('Series check failed:',e)}
+  finally{granarySeriesRunning=false}
+}
+function granarySeriesLine(items){
+  const i=items.find(x=>x.series_link)||items[0];if(!items.some(x=>x.series_link))return null;
+  const el=document.createElement('div');el.className='seriesLine';
+  const fmt=d=>new Date(d).toLocaleString('en-GB',{weekday:'short',day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'});
+  const now=new Date();
+  let txt='🔗 Series link · ';
+  if(i.next_airing_at&&new Date(i.next_airing_at)<=now&&i.next_airing_end&&new Date(i.next_airing_end)>now)txt+='On now · '+(i.next_airing_channel||'');
+  else if(i.next_airing_at)txt+='Next: '+fmt(i.next_airing_at)+' · '+(i.next_airing_channel||'');
+  else txt+='No showings in the next 7 days – checked daily';
+  el.textContent=txt;
+  const lastAired=items.reduce((m,x)=>x.last_aired_at&&new Date(x.last_aired_at)>m?new Date(x.last_aired_at):m,new Date(0));
+  const seen=items.reduce((m,x)=>{const t=new Date(x.series_seen_at||x.created_at||0);return t>m?t:m},new Date(0));
+  if(lastAired>seen){const b=document.createElement('span');b.className='newEpisode';b.textContent='New episode';el.prepend(b);}
+  return el;
+}
+async function granarySetSeriesLink(items,on){
+  await granaryClient.from('library_items').update({series_link:on,series_auto:false}).in('id',items.map(i=>i.id));
+  await granarySeriesBackground();openLibrary();
+}
+async function granaryMarkSeriesSeen(items){
+  try{await granaryClient.from('library_items').update({series_seen_at:new Date().toISOString()}).in('id',items.map(i=>i.id));}catch(e){}
 }
 
 // ── Automatic programme links ───────────────────────────────────────────────
@@ -288,7 +362,9 @@ async function openLibrary(){
     const title=document.createElement('div');title.className='libraryTitle';title.textContent=titleText;
     const summary=document.createElement('div');summary.className='librarySummary';summary.textContent=items.length>1?items.length+' saved broadcasts / entries':(item.channel||'Saved programme');
     const service=providerForChannel(item.channel);
+    const seriesLine=granarySeriesLine(items);
     const actions=document.createElement('div');actions.className='libraryCardActions';
+    actions.addEventListener('click',e=>{if(e.target.closest('a'))granaryMarkSeriesSeen(items)});
     const primary=document.createElement('a');primary.className='primaryProvider';primary.target='_blank';primary.rel='noopener noreferrer';
     const known=GRANARY_KNOWN_PROGRAMME_URLS[String(titleText).trim().toLowerCase()]||{};
     const verifiedPrimary=getGranaryVerifiedLink(titleText,service);
@@ -316,7 +392,10 @@ async function openLibrary(){
     const meta=granaryMetadataByTitle[granaryNormaliseTitle(titleText)];
     if(meta?.match_status==='matched'){if(meta.image_url&&!posterUrl){poster.style.backgroundImage='linear-gradient(180deg,#07111a22 15%,#07111acc 100%),url("'+meta.image_url+'")';poster.setAttribute('role','img');poster.setAttribute('aria-label',titleText+' programme artwork');}if(meta.summary){const synopsis=document.createElement('div');synopsis.className='librarySummary';synopsis.textContent=meta.summary;row.append(synopsis);}const credit=document.createElement('div');credit.className='providerNote';credit.textContent='Programme information: TVmaze';row.append(credit);}
     else if(meta?.match_status==='needs_review'){const pending=document.createElement('div');pending.className='providerNote';pending.textContent='Programme match needs checking — no automatic link has been assigned.';row.append(pending);}
-    row.append(poster,title,summary,actions,extra,episodeToggle,episodes);grid.append(row);
+    const seriesBtn=document.createElement('button');seriesBtn.className='moreProviders seriesToggle';const isLinked=items.some(x=>x.series_link);
+    seriesBtn.textContent=isLinked?'🔗 Series link: On':'🔗 Series link: Off';seriesBtn.title=isLinked?'Stop tracking new showings of this programme':'Track every showing of this programme in the 7-day guide';
+    seriesBtn.onclick=()=>granarySetSeriesLink(items,!isLinked);actions.append(seriesBtn);
+    row.append(poster,title,summary);if(seriesLine)row.append(seriesLine);row.append(actions,extra,episodeToggle,episodes);grid.append(row);
   });
   if(granaryMetadataSetupReady)startGranaryMetadataLookups(data);
 }

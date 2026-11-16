@@ -11,6 +11,8 @@ const dateFor=i=>{let d=new Date();d.setHours(0,0,0,0);d.setDate(d.getDate()+wee
 const dateKey=d=>`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
 const dateText=d=>d.toLocaleDateString('en-GB',{weekday:'short',day:'numeric'});
 const norm=s=>String(s||'').toLowerCase().replace(/[^a-z0-9]/g,'');
+// Programme name without "New:"/"Live:" prefixes, so every showing of a series matches.
+const granarySeriesKey=t=>norm(String(t||'').replace(/^\s*(new|live|final|brand new)\s*[:\-–]\s*/i,'').replace(/\s*\((signed|sl|ad|hd|repeat|r)\)\s*$/i,''));
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function isoLocal(d){return `${dateKey(d)}T${pad(d.getHours())}:${pad(d.getMinutes())}:00${-d.getTimezoneOffset()>=0?'+':'-'}${pad(Math.floor(Math.abs(d.getTimezoneOffset())/60))}:${pad(Math.abs(d.getTimezoneOffset())%60)}`}
 function getArr(j){if(Array.isArray(j))return j;for(const k of ['data','channels','listings','results','items'])if(Array.isArray(j?.[k]))return j[k];return []}
@@ -69,7 +71,8 @@ function render(){
    const from=startHour*60,to=endHour*60,a=p.start.getHours()*60+p.start.getMinutes(),b=p.end.getHours()*60+p.end.getMinutes()+(dateKey(p.end)!==key?1440:0);
    if(b<=from||a>=to)return;const left=Math.max(0,(a-from)/(to-from)*100),right=Math.min(to,b);
    const btn=document.createElement('button');btn.className='program';btn.style.left=left+'%';btn.style.width=Math.max(.8,(right-Math.max(a,from))/(to-from)*100)+'%';
-   btn.innerHTML=`<b>${esc(p.title)}</b><span>${p.start.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})}–${p.end.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})}</span>`;btn.onclick=()=>showProgramme(p,ch);line.append(btn);count++;
+   const linked=window.granarySeriesTitles&&window.granarySeriesTitles.has(granarySeriesKey(p.title));if(linked){btn.classList.add('seriesLinked');btn.title='Series link: this programme is in your library';}
+   btn.innerHTML=`<b>${linked?'🔗 ':''}${esc(p.title)}</b><span>${p.start.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})}–${p.end.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})}</span>`;btn.onclick=()=>showProgramme(p,ch);line.append(btn);count++;
   });
   if(weekOffset===0&&selected===0){
    const now=new Date(),minute=now.getHours()*60+now.getMinutes(),from=startHour*60,to=endHour*60;
@@ -152,6 +155,7 @@ async function loadListings(){
   }catch(e){errors.push(ch.display+': '+e.message)}
  }));
  render();
+ if(typeof granarySeriesBackground==='function')setTimeout(()=>granarySeriesBackground(),0);
  if(errors.length){$('status').textContent='Some listings unavailable';$('notice').style.display='block';$('notice').textContent=errors.join(' · ')}
  else $('status').textContent='Listings refreshed';
  const missing=channels.filter(c=>c.id==null).map(c=>c.display);
