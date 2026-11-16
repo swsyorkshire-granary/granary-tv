@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#fafaf9"><title>Granary TV</title>
+<link rel="stylesheet" href="css/next.css?v=22">
+</head><body class="nx">
+<header class="top">
+  <div class="logo">Granary<i>.</i>tv</div>
+  <nav class="tabs" role="tablist"><button id="tabGuide" class="on" role="tab">Guide</button><button id="tabLibrary" role="tab">Library</button></nav>
+  <div class="days" id="nxDays"></div>
+  <button id="nxSettings" class="iconBtn" aria-label="Settings">⚙</button>
+</header>
+
+<main>
+  <section id="panel" class="info" aria-live="polite"></section>
+  <section id="guideView">
+    <div class="grid" id="nxGrid"><div class="loading">Loading the guide…</div></div>
+    <div class="gridBar">
+      <button id="earlier">‹ Earlier</button><span id="windowLabel" class="winLabel"></span><button id="later">Later ›</button>
+      <button id="nowBtn">Now</button>
+      <span class="status" id="status"></span>
+    </div>
+    <div class="notice" id="notice"></div>
+  </section>
+  <section id="libraryView" hidden>
+    <div class="chips" id="libChips"></div>
+    <div class="lib" id="libGrid"></div>
+  </section>
+</main>
+
+<!-- Settings -->
+<div class="cloudPanel" id="settingsPanel"><div class="cloudCard">
+  <div class="cardHead"><h2>Settings</h2><button class="close">Close</button></div>
+  <p id="cloudStatus" class="muted">Connecting…</p>
+  <div class="settingsList">
+    <button id="signInBtn">Sign in</button>
+    <button id="signOutBtn" style="display:none">Sign out</button>
+    <button id="servicesBtn" disabled>My streaming services</button>
+    <button id="manage">Add or remove channels</button>
+    <button id="refresh">Refresh listings</button>
+    <label class="setRow">Guide opens at <select id="nxHours"></select></label>
+  </div>
+  <p class="muted small">Listings from the onTVnow public UK listings feed. <a href="index.html?classic=1" id="classicLink">Use the classic design</a> · <a href="link-test-bench.html">Link Test Bench</a></p>
+</div></div>
+
+<!-- More options for a programme or show -->
+<div class="cloudPanel" id="morePanel"><div class="cloudCard">
+  <div class="cardHead"><h2 id="moreTitle">More</h2><button class="close">Close</button></div>
+  <div id="moreBody"></div>
+</div></div>
+
+<!-- Channels (shared with the classic design) -->
+<div class="modal" id="modal"><div class="sheet"><div class="cardHead"><h2 id="modalTitle">Channels</h2><button class="close" id="close">Close</button></div><p id="modalHelp"></p><div class="chipsList" id="chips"></div><select id="addSelect"></select><button id="addButton">Add channel</button></div></div>
+
+<div class="cloudPanel" id="authPanel"><div class="cloudCard">
+  <div class="cardHead"><h2>Granary TV account</h2><button class="close" onclick="document.getElementById('authPanel').classList.remove('open')">Close</button></div>
+  <p class="muted">Use the same email and password on the iPad, phone and TV.</p>
+  <input id="authEmail" type="email" autocomplete="email" placeholder="Your email address">
+  <input id="authPassword" type="password" autocomplete="current-password" placeholder="Password (at least 8 characters)">
+  <button id="passwordSignInBtn" class="primary">Sign in with password</button>
+  <button id="setPasswordBtn" style="display:none" class="primary">Set / change my password</button>
+  <button id="sendLinkBtn">Email me a sign-in link (backup)</button><div id="authMessage" class="cloudMessage"></div>
+</div></div>
+<div class="cloudPanel" id="servicesPanel"><div class="cloudCard">
+  <div class="cardHead"><h2>My streaming services</h2><button class="close" onclick="document.getElementById('servicesPanel').classList.remove('open')">Close</button></div>
+  <p class="muted">Choose the services you use. These follow your account on every device.</p>
+  <div id="servicesChoices" class="servicesChoices"></div>
+  <button id="saveServicesBtn" class="primary">Save my services</button><div id="servicesMessage" class="cloudMessage"></div>
+</div></div>
+
+<!-- Used by the shared listings and library code; not shown in this design -->
+<div class="legacy" hidden aria-hidden="true">
+  <div id="days"></div><div id="guide"></div><select id="start"></select><select id="end"></select>
+  <button id="prev"></button><button id="next"></button><button id="libraryBtn"></button>
+  <div class="cloudPanel" id="libraryPanel"><div id="libraryContent"></div></div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.89.0/dist/umd/supabase.js"></script>
+<script src="js/library.js?v=22"></script>
+<script src="js/guide.js?v=22"></script>
+<script src="js/next.js?v=22"></script>
+<script src="js/tvnav.js?v=22"></script>
+</body></html>

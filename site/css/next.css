@@ -1,0 +1,150 @@
+/* Granary TV – new design (light, clean). Sizes are in rem so the TV can scale the whole page. */
+:root{--ink:#14161a;--soft:#6b7280;--faint:#9aa1ab;--line:#eceef1;--tile:#f3f4f6;--bg:#fafaf9;--card:#fff;--acc:#ff5a3c;--accink:#c2410c;--accsoft:#fff1ec;--ok:#0f766e;color-scheme:light}
+html{font-size:15px}
+html.tv{font-size:calc(100vw / 80)}            /* 24px on a 1080p TV, scales with any TV browser */
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:1rem/1.35 Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased;min-height:100vh}
+button,select,input{font:inherit;color:inherit}
+button{cursor:pointer;border:0;background:none;padding:0}
+a{color:inherit}
+[hidden]{display:none!important}
+
+/* Header */
+.top{display:flex;align-items:center;gap:1.2rem;padding:1rem 1.7rem .9rem;position:sticky;top:0;background:var(--bg);z-index:20}
+.logo{font-weight:800;font-size:1.3rem;letter-spacing:-.01em;white-space:nowrap}.logo i{color:var(--acc);font-style:normal}
+.tabs{display:flex;gap:2px;background:#eceef1;border-radius:999px;padding:3px}
+.tabs button{padding:.45rem 1.1rem;border-radius:999px;font-weight:700;font-size:.93rem;color:var(--soft)}
+.tabs button.on{background:#fff;color:var(--ink);box-shadow:0 1px 2px #0000001f}
+.days{display:flex;gap:.25rem;flex:1;min-width:0;overflow-x:auto;scrollbar-width:none}.days::-webkit-scrollbar{display:none}
+.day{padding:.45rem .85rem;border-radius:999px;color:var(--soft);font-weight:600;font-size:.93rem;white-space:nowrap}
+.day.on{background:var(--ink);color:#fff}
+.iconBtn{font-size:1.3rem;color:var(--soft);width:2.4rem;height:2.4rem;border-radius:999px;margin-left:auto}
+
+main{padding:0 1.7rem 1.7rem}
+
+/* Info panel */
+.info{display:grid;grid-template-columns:1fr auto;gap:1.5rem;align-items:end;background:var(--card);border-radius:1.3rem;padding:1.4rem 1.8rem;margin:.2rem 0 1.1rem;min-height:9.5rem;box-shadow:0 1px 2px #0000000a}
+.info .meta{color:var(--soft);font-weight:600;font-size:.87rem}
+.info h1{font-size:2.1rem;letter-spacing:-.02em;margin:.3rem 0 .35rem;line-height:1.1}
+.info .desc{color:var(--soft);margin:0;max-width:44rem;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.info .bar{width:20rem;max-width:100%;margin-top:.9rem}
+.info .msg{color:var(--ok);font-weight:600;font-size:.87rem;margin-top:.5rem;min-height:1em}
+.info .msg:empty{display:none}
+.tag{display:inline-block;font-size:.72rem;font-weight:800;color:var(--accink);background:var(--accsoft);padding:.2rem .5rem;border-radius:.4rem;margin-left:.5rem;vertical-align:middle;letter-spacing:.02em}
+.tag.ok{color:var(--ok);background:#e7f4f1}
+.acts{display:flex;gap:.5rem;flex-wrap:wrap;justify-content:flex-end}
+.btn{display:inline-flex;align-items:center;gap:.4rem;padding:.65rem 1.05rem;border-radius:999px;font-weight:700;font-size:.93rem;background:var(--tile);color:var(--ink);text-decoration:none;white-space:nowrap}
+.btn.p{background:var(--acc);color:#fff}
+.sheetClose{display:none}
+.bar{height:4px;background:var(--line);border-radius:4px;overflow:hidden}.bar i{display:block;height:100%;background:var(--acc)}
+
+/* Guide grid */
+.grid{background:var(--card);border-radius:1.3rem;padding:.6rem 1rem .9rem;box-shadow:0 1px 2px #0000000a}
+.hrs{position:relative;height:1.9rem;margin-left:3.7rem}
+.hrs span{position:absolute;top:.4rem;font-size:.8rem;font-weight:700;color:var(--faint)}
+.gr{display:grid;grid-template-columns:3.7rem 1fr;height:3.6rem;align-items:center}
+.cn{display:flex;align-items:center}
+.badge{display:inline-flex;align-items:center;justify-content:center;width:2.6rem;height:2.6rem;border-radius:.7rem;font-weight:800;font-size:.78rem;color:#fff;flex:none;letter-spacing:-.01em;overflow:hidden;text-align:center;line-height:1}
+.tl{position:relative;height:2.95rem}
+.tile{position:absolute;top:0;height:100%;border-radius:.65rem;background:var(--tile);padding:0 .75rem;display:flex;align-items:center;font-weight:600;font-size:.93rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:left;color:var(--ink)}
+.tile span{overflow:hidden;text-overflow:ellipsis}
+.tile.lk{background:var(--accsoft);color:var(--accink)}
+.tile.past{color:var(--faint)}
+.tile.sel{background:var(--ink);color:#fff}
+.nowl{position:absolute;top:-.3rem;bottom:-.3rem;width:2px;background:var(--acc);border-radius:2px;pointer-events:none;z-index:2}
+.gridBar{display:flex;align-items:center;gap:.4rem;margin:.8rem .2rem 0;color:var(--soft);font-size:.87rem;font-weight:600}
+.gridBar button{padding:.45rem .8rem;border-radius:999px;font-weight:700}
+.gridBar #nowBtn{background:var(--tile)}
+.winLabel{min-width:7.5rem;text-align:center}
+.status{margin-left:auto;color:var(--faint);font-weight:500;font-size:.8rem}
+.notice{display:none;margin-top:.6rem;padding:.7rem 1rem;border-radius:.8rem;background:#fff7e6;color:#8a5a14;font-size:.85rem}
+.loading,.empty{padding:2rem;color:var(--soft);text-align:center}
+
+/* Library */
+.chips{display:flex;gap:.5rem;margin:0 0 .9rem;flex-wrap:wrap;align-items:center}
+.chip{padding:.45rem .95rem;border-radius:999px;background:#fff;font-weight:600;font-size:.87rem;color:var(--soft);box-shadow:0 1px 2px #0000000f}
+.chip.on{background:var(--ink);color:#fff}
+.lib{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.9rem}
+.st{background:var(--card);border-radius:1.05rem;padding:.6rem .6rem .9rem;display:grid;gap:.35rem;text-align:left;box-shadow:0 1px 2px #0000000a;align-content:start}
+.st .art{height:5.6rem;border-radius:.75rem;padding:.55rem .65rem;display:flex;justify-content:space-between;align-items:flex-start;font-size:.72rem;font-weight:700;color:#4b5563;text-transform:uppercase;letter-spacing:.05em;background-size:cover;background-position:center}
+.st .art.img span:first-child{background:#ffffffd9;padding:.1rem .35rem;border-radius:.3rem}
+.st em{font-style:normal;background:var(--acc);color:#fff;border-radius:.3rem;padding:.12rem .4rem;font-size:.65rem}
+.st b{font-size:1rem;padding:0 .15rem}
+.st small{color:var(--soft);font-size:.8rem;padding:0 .15rem}
+.st.sel{box-shadow:0 0 0 2px var(--ink)}
+.live{color:var(--acc);font-weight:700}
+.libEmpty{background:var(--card);border-radius:1.3rem;padding:2.2rem;color:var(--soft);text-align:center}
+.libEmpty button{margin-top:1rem}
+
+/* Remote / keyboard focus */
+:focus{outline:none}
+html.remoteNav :focus,:focus-visible{outline:3px solid var(--ink)!important;outline-offset:2px;z-index:5}
+html.remoteNav .tile:focus{outline-color:var(--acc)!important}
+
+/* Panels (settings, more, account, channels) */
+.cloudPanel,.modal{display:none;position:fixed;inset:0;background:#14161a66;z-index:1000;align-items:center;justify-content:center;padding:1rem}
+.cloudPanel.open,.modal.open{display:flex}
+.cloudCard,.sheet{background:#fff;border-radius:1.3rem;padding:1.4rem 1.6rem;width:min(34rem,100%);max-height:88vh;overflow:auto;box-shadow:0 20px 60px #0003}
+.cardHead{display:flex;align-items:center;justify-content:space-between;gap:1rem;margin-bottom:.6rem}
+.cardHead h2{margin:0;font-size:1.3rem}
+.close{padding:.5rem .9rem;border-radius:999px;background:var(--tile);font-weight:700;font-size:.87rem}
+.muted{color:var(--soft)}.small{font-size:.8rem}
+.settingsList,#moreBody{display:grid;gap:.5rem;margin:1rem 0}
+.settingsList button,#moreBody a,#moreBody button,.cloudCard>button,.sheet>button,.sheet select,.cloudCard input{display:block;width:100%;text-align:left;padding:.8rem 1rem;border-radius:.8rem;background:var(--tile);font-weight:600;text-decoration:none;border:0}
+.cloudCard>button,.cloudCard input{margin-top:.5rem}
+.cloudCard input{background:#fff;border:1px solid var(--line)}
+.primary,.cloudCard>button.primary{background:var(--acc)!important;color:#fff}
+#moreBody .danger{color:#b42318}
+.setRow{display:flex;align-items:center;justify-content:space-between;padding:.6rem 1rem;border-radius:.8rem;background:var(--tile);font-weight:600}
+.setRow select{border:0;background:#fff;border-radius:.5rem;padding:.3rem .5rem}
+.cloudMessage{margin-top:.6rem;color:var(--soft);font-size:.87rem}
+.servicesChoices{display:grid;grid-template-columns:1fr 1fr;gap:.5rem;margin:1rem 0}
+.servicesChoices label{background:var(--tile)!important;border-radius:.7rem!important}
+.chipsList{display:flex;flex-wrap:wrap;gap:.4rem;margin:.6rem 0}
+.chipsList .chip{background:var(--tile)}
+.sheet p{color:var(--soft)}
+.moreNote{color:var(--faint);font-size:.8rem;margin:.3rem 0 0}
+
+/* Fire TV reminder card (shared with the classic design) */
+.appReminder{position:fixed;inset:0;z-index:9999;background:#14161ab3;display:flex;align-items:center;justify-content:center}
+.appReminderCard{background:#fff;border-radius:1.5rem;padding:2rem 2.6rem;max-width:46rem;width:80%;text-align:center;box-shadow:0 20px 60px #0005}
+.arSmall{font-size:1.2rem;color:var(--soft);margin-bottom:.6rem}
+.arTitle{font-size:2.2rem;font-weight:800;line-height:1.15;margin-bottom:.8rem}
+.arSteps{font-size:1rem;color:var(--soft);margin-bottom:1.4rem}
+.arButtons{display:flex;gap:.8rem;justify-content:center}
+.arButtons button{font-size:1.05rem;padding:.8rem 1.3rem;border-radius:999px;background:var(--acc);color:#fff;font-weight:700}
+.arButtons .arCancel{background:var(--tile);color:var(--ink)}
+
+/* TV: the panel and grid fill the screen */
+html.tv .top{padding:1rem 1.7rem .7rem}
+html.tv .iconBtn{width:2.6rem;height:2.6rem}
+html.tv .gr{height:4rem}html.tv .tl{height:3.35rem}html.tv .tile{font-size:1rem}
+
+/* iPad portrait / small laptops */
+@media (max-width:1000px){.lib{grid-template-columns:repeat(3,minmax(0,1fr))}.info h1{font-size:1.8rem}}
+
+/* Phone */
+@media (max-width:700px){
+  .top{flex-wrap:wrap;gap:.6rem .8rem;padding:.8rem 1rem .6rem}
+  .days{order:5;flex-basis:100%}
+  .iconBtn{margin-left:auto}
+  main{padding:0 .8rem 6rem}
+  .grid{padding:.4rem .5rem .7rem;border-radius:1rem}
+  .hrs{margin-left:2.9rem}
+  .gr{grid-template-columns:2.9rem 1fr;height:3.3rem}
+  .badge{width:2.3rem;height:2.3rem;font-size:.7rem;border-radius:.6rem}
+  .tl{height:2.7rem}
+  .tile{padding:0 .5rem;font-size:.85rem;white-space:normal;line-height:1.15}
+  .tile span{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+  .gridBar{flex-wrap:wrap}.status{flex-basis:100%;margin:0}
+  /* panel becomes a sheet that slides up from the bottom */
+  .info{position:fixed;left:0;right:0;bottom:0;margin:0;z-index:60;border-radius:1.3rem 1.3rem 0 0;grid-template-columns:1fr;gap:1rem;padding:1.2rem 1.2rem calc(1.2rem + env(safe-area-inset-bottom));box-shadow:0 -10px 40px #0002;transform:translateY(110%);transition:transform .25s ease;min-height:0}
+  .info.open{transform:none}
+  .info h1{font-size:1.6rem}
+  .acts{justify-content:flex-start}
+  .sheetClose{display:block;position:absolute;top:.8rem;right:.9rem;width:2.2rem;height:2.2rem;border-radius:999px;background:var(--tile);font-size:1.1rem}
+  .lib{grid-template-columns:repeat(2,minmax(0,1fr));gap:.6rem}
+  .st .art{height:4.6rem}
+  .chips{flex-wrap:nowrap;overflow-x:auto}
+  .chip{white-space:nowrap}
+}
