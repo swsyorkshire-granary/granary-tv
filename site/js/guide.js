@@ -16,7 +16,22 @@ const granarySeriesKey=t=>norm(String(t||'').replace(/^\s*(new|live|final|brand 
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function isoLocal(d){return `${dateKey(d)}T${pad(d.getHours())}:${pad(d.getMinutes())}:00${-d.getTimezoneOffset()>=0?'+':'-'}${pad(Math.floor(Math.abs(d.getTimezoneOffset())/60))}:${pad(Math.abs(d.getTimezoneOffset())%60)}`}
 function getArr(j){if(Array.isArray(j))return j;for(const k of ['data','channels','listings','results','items'])if(Array.isArray(j?.[k]))return j[k];return []}
-async function getJSON(url){const r=await fetch(url,{headers:{Accept:'application/json'}});if(!r.ok)throw Error('HTTP '+r.status+' from listings feed');return r.json()}
+// The free listings feed rate-limits (HTTP 429). Wait and retry instead of failing straight away.
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+async function getJSON(url){
+ for(let attempt=0;;attempt++){
+  const r=await fetch(url,{headers:{Accept:'application/json'}});
+  if(r.ok)return r.json();
+  if((r.status===429||r.status===503)&&attempt<4){const ra=Number(r.headers.get('Retry-After'));await sleep(ra>0&&ra<30?ra*1000:1500*Math.pow(2,attempt));continue}
+  throw Error(r.status===429?'listings service busy (too many requests)':'HTTP '+r.status+' from listings feed');
+ }
+}
+// Listings are kept on this device for a while, so channel changes and reopening don't re-download everything.
+const LISTINGS_FRESH_MS=45*60*1000;
+function cacheKey(chId,from){return 'granary-listings:'+chId+':'+dateKey(from)}
+function readCache(chId,from){try{const c=JSON.parse(localStorage.getItem(cacheKey(chId,from))||'null');return c&&Array.isArray(c.items)?c:null}catch(e){return null}}
+function writeCache(chId,from,items){try{localStorage.setItem(cacheKey(chId,from),JSON.stringify({t:Date.now(),items}))}catch(e){try{Object.keys(localStorage).filter(k=>k.startsWith('granary-listings:')).forEach(k=>localStorage.removeItem(k));localStorage.setItem(cacheKey(chId,from),JSON.stringify({t:Date.now(),items}))}catch(e2){}}}
+function pruneCache(){try{const today=dateKey(dateFor(0));Object.keys(localStorage).filter(k=>k.startsWith('granary-listings:')&&k.split(':')[2]<today).forEach(k=>localStorage.removeItem(k))}catch(e){}}
 function channelLabel(c){return c.name||c.title||c.channel_name||c.display_name||''}
 // Score how well a directory channel fits a wanted channel. Higher is better; 0 = no match.
 // The user is in South/West Yorkshire, so regional BBC One and ITV1 prefer the Yorkshire versions.
@@ -142,26 +157,35 @@ async function loadDirectory(){
  channels=channels.map(ch=>{if(ch.id!=null)return ch;const c=pickChannel(ch.display);return c?{...ch,id:c.id,sourceName:channelLabel(c)}:ch});
  sortChannels();save();
 }
-async function loadListings(){
+async function loadListings(force){
  $('status').textContent='Loading seven days…';$('notice').style.display='none';dataByChannel={};
  const from=dateFor(0),to=dateFor(7);to.setSeconds(0,0);to.setMinutes(to.getMinutes()-1);
- const active=channels.filter(c=>c.id!=null);let errors=[];
- await Promise.all(active.map(async ch=>{
+ const active=channels.filter(c=>c.id!=null);let errors=[],stale=[];pruneCache();
+ const fetchChannel=async ch=>{
+  const cached=readCache(ch.id,from);
+  if(cached&&!force&&Date.now()-cached.t<LISTINGS_FRESH_MS){dataByChannel[ch.id]=cached.items.map(normalize).filter(Boolean);return}
   try{
    const params=new URLSearchParams({channel_id:String(ch.id),from:isoLocal(from),to:isoLocal(to),limit:'100'});
    let all=[];
    for(let page=1;page<=10;page++){params.set('page',String(page));const j=await getJSON(API+'/listings?'+params.toString());const arr=getArr(j);all.push(...arr);const meta=j.meta||j.pagination||{};const last=Number(meta.last_page||meta.total_pages||meta.pages||1);if(page>=last||arr.length<100)break}
+   writeCache(ch.id,from,all);
    dataByChannel[ch.id]=all.map(normalize).filter(Boolean);
-  }catch(e){errors.push(ch.display+': '+e.message)}
- }));
+  }catch(e){
+   if(cached){dataByChannel[ch.id]=cached.items.map(normalize).filter(Boolean);stale.push(ch.display)}
+   else errors.push(ch.display+': '+e.message);
+  }
+ };
+ // Two channels at a time keeps the free listings service happy.
+ const queue=[...active];await Promise.all([0,1].map(async()=>{while(queue.length)await fetchChannel(queue.shift())}));
  render();
+ if(stale.length&&!errors.length){$('notice').style.display='block';$('notice').textContent='Showing saved listings for '+stale.join(', ')+' – the listings service is busy; press Refresh in a minute for the latest.'}
  if(typeof granarySeriesBackground==='function')setTimeout(()=>granarySeriesBackground(),0);
- if(errors.length){$('status').textContent='Some listings unavailable';$('notice').style.display='block';$('notice').textContent=errors.join(' · ')}
- else $('status').textContent='Listings refreshed';
+ if(errors.length){$('status').textContent='Some listings unavailable';$('notice').style.display='block';$('notice').textContent=errors.join(' · ')+' – press Refresh in a minute.'}
+ else $('status').textContent=stale.length?'Listings (saved copy for some channels)':'Listings refreshed';
  const missing=channels.filter(c=>c.id==null).map(c=>c.display);
  if(missing.length){$('notice').style.display='block';$('notice').textContent+=( $('notice').textContent?' · ':'')+'Not present in source directory: '+missing.join(', ')}
 }
-$('refresh').onclick=()=>{syncNow();loadListings()};$('manage').onclick=openManage;$('close').onclick=()=>$('modal').classList.remove('open');$('modal').onclick=e=>{if(e.target===$('modal'))$('modal').classList.remove('open')};
+$('refresh').onclick=()=>{syncNow();loadListings(true)};$('manage').onclick=openManage;$('close').onclick=()=>$('modal').classList.remove('open');$('modal').onclick=e=>{if(e.target===$('modal'))$('modal').classList.remove('open')};
 $('addButton').onclick=()=>{const id=$('addSelect').value,c=directory.find(x=>String(x.id)===id);if(c){channels.push({id:c.id,display:channelLabel(c),sourceName:channelLabel(c)});sortChannels();save();openManage();loadListings()}};
 $('prev').onclick=()=>{weekOffset--;selected=0;startHour=6;$('start').value='6';renderDays();loadListings()};$('next').onclick=()=>{weekOffset++;selected=0;if(weekOffset===0)syncNow();else{startHour=6;$('start').value='6'}renderDays();loadListings()};
 for(let h=0;h<24;h+=0.5){const m=Math.round(h*60);$('start').add(new Option(pad(Math.floor(m/60))+':'+pad(m%60),h))};for(let h=24;h>=1;h--)$('end').add(new Option((h===24?'24':pad(h))+':00',h));$('start').value=6;$('end').value=24;syncNow();
