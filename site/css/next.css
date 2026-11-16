@@ -42,12 +42,16 @@ main{padding:0 1.7rem 1.7rem}
 .grid{background:var(--card);border-radius:1.3rem;padding:.6rem 1rem .9rem;box-shadow:0 1px 2px #0000000a}
 .hrs{position:relative;height:1.9rem;margin-left:3.7rem}
 .hrs span{position:absolute;top:.4rem;font-size:.8rem;font-weight:700;color:var(--faint)}
-.gr{display:grid;grid-template-columns:3.7rem 1fr;height:3.6rem;align-items:center}
+.gr{display:grid;grid-template-columns:3.7rem 1fr;height:var(--rowh,3.6rem);align-items:center}
 .cn{display:flex;align-items:center}
 .badge{display:inline-flex;align-items:center;justify-content:center;width:2.6rem;height:2.6rem;border-radius:.7rem;font-weight:800;font-size:.78rem;color:#fff;flex:none;letter-spacing:-.01em;overflow:hidden;text-align:center;line-height:1}
-.tl{position:relative;height:2.95rem}
+.tl{position:relative;height:calc(var(--rowh,3.6rem) - .65rem)}
 .tile{position:absolute;top:0;height:100%;border-radius:.65rem;background:var(--tile);padding:0 .75rem;display:flex;align-items:center;font-weight:600;font-size:.93rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:left;color:var(--ink)}
 .tile span{overflow:hidden;text-overflow:ellipsis}
+.tile small{display:none;font-size:.78rem;font-weight:500;opacity:.7;margin-top:.15rem}
+.grid.tall .tile{flex-direction:column;align-items:flex-start;justify-content:center;white-space:normal;line-height:1.2}
+.grid.tall .tile span{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;width:100%}
+.grid.tall .tile small{display:block;white-space:nowrap}
 .tile.lk{background:var(--accsoft);color:var(--accink)}
 .tile.past{color:var(--faint)}
 .tile.sel{background:var(--ink);color:#fff}
@@ -118,7 +122,7 @@ html.remoteNav .tile:focus{outline-color:var(--acc)!important}
 /* TV: the panel and grid fill the screen */
 html.tv .top{padding:1rem 1.7rem .7rem}
 html.tv .iconBtn{width:2.6rem;height:2.6rem}
-html.tv .gr{height:4rem}html.tv .tl{height:3.35rem}html.tv .tile{font-size:1rem}
+html.tv .tile{font-size:1rem}
 
 /* iPad portrait / small laptops */
 @media (max-width:1000px){.lib{grid-template-columns:repeat(3,minmax(0,1fr))}.info h1{font-size:1.8rem}}
@@ -131,9 +135,8 @@ html.tv .gr{height:4rem}html.tv .tl{height:3.35rem}html.tv .tile{font-size:1rem}
   main{padding:0 .8rem 6rem}
   .grid{padding:.4rem .5rem .7rem;border-radius:1rem}
   .hrs{margin-left:2.9rem}
-  .gr{grid-template-columns:2.9rem 1fr;height:3.3rem}
+  .gr{grid-template-columns:2.9rem 1fr}
   .badge{width:2.3rem;height:2.3rem;font-size:.7rem;border-radius:.6rem}
-  .tl{height:2.7rem}
   .tile{padding:0 .5rem;font-size:.85rem;white-space:normal;line-height:1.15}
   .tile span{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
   .gridBar{flex-wrap:wrap}.status{flex-basis:100%;margin:0}

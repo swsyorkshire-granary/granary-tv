@@ -66,8 +66,9 @@
     const hrs = h('div', 'hrs');
     for (let hr = Math.ceil(startHour); hr < endHour; hr++) { const s = h('span', '', pad(hr % 24) + ':00'); s.style.left = ((hr * 60 - from) / span * 100) + '%'; hrs.append(s); }
     g.append(hrs);
-    let count = 0;
+    let count = 0; const seenIds = new Set();
     channels.forEach(ch => {
+      if (ch.id != null) { if (seenIds.has(ch.id)) return; seenIds.add(ch.id); }
       const row = h('div', 'gr'), cn = h('div', 'cn'), tl = h('div', 'tl');
       cn.append(badgeEl(ch.display)); row.append(cn, tl);
       dayProgrammes(ch).forEach(p => {
@@ -78,7 +79,7 @@
         if (isLinked(p.title)) t.classList.add('lk');
         if (isToday && p.end <= now) t.classList.add('past');
         if (NX.sel === k) t.classList.add('sel');
-        t.dataset.k = k; const s = h('span', '', (isLinked(p.title) ? '🔗 ' : '') + p.title); t.append(s);
+        t.dataset.k = k; const s = h('span', '', (isLinked(p.title) ? '🔗 ' : '') + p.title); t.append(s, h('small', '', NX.phone() ? fmtT(p.start) : fmtT(p.start) + '–' + fmtT(p.end)));
         t.title = p.title + ' · ' + fmtT(p.start) + '–' + fmtT(p.end);
         t.onclick = () => { selectTile(k, true); };
         t.onfocus = () => { if (NX.sel !== k) selectTile(k, false); };
@@ -88,6 +89,7 @@
       g.append(row);
     });
     if (!channels.length || (!count && Object.keys(dataByChannel).length)) g.append(h('div', 'empty', 'Nothing in these hours. Try Earlier or Later, or another day.'));
+    sizeRows(g);
     $('windowLabel').textContent = pad(Math.floor(startHour)) + ':' + pad(Math.round(startHour % 1 * 60)) + ' – ' + (endHour >= 24 ? '24:00' : pad(Math.floor(endHour)) + ':' + pad(Math.round(endHour % 1 * 60)));
     $('earlier').disabled = startHour <= 0; $('later').disabled = endHour >= 24;
     $('nowBtn').hidden = !(weekOffset === 0);
@@ -97,6 +99,18 @@
     if (cur) { cur.el.classList.add('sel'); if (NX.tab === 'guide' && !(usingPanel && NX.shown === NX.sel)) showGuidePanel(cur); if (wasTile) cur.el.focus({ preventScroll: true }); }
     else if (NX.tab === 'guide' && count === 0) $('panel').innerHTML = '';
   };
+  // Rows grow so the guide fills the screen (up to about 1.8× the normal depth).
+  function sizeRows(g) {
+    const rows = g.querySelectorAll('.gr').length; if (!rows) return;
+    const rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 15;
+    const base = (NX.tv ? 4 : NX.phone() ? 3.3 : 3.6) * rem;
+    const top = g.getBoundingClientRect().top + window.scrollY, hrs = g.querySelector('.hrs').offsetHeight;
+    const below = (NX.phone() ? 7 : 4.5) * rem;          // Earlier/Later bar and margins
+    const avail = window.innerHeight - top - hrs - below;
+    const rowH = Math.max(base, Math.min(base * (NX.phone() ? 2.3 : 1.8), avail / rows));
+    g.style.setProperty('--rowh', rowH + 'px');
+    g.classList.toggle('tall', rowH >= base * 1.25);
+  }
   function defaultTile() {
     const now = new Date(), isToday = weekOffset === 0 && selected === 0;
     const all = [...NX.tiles.entries()];
@@ -219,8 +233,11 @@
     renderLibrary(); if (NX.tab === 'guide') render();
     setTimeout(() => granaryAutoFillLibrary(data || []), 0);
     // Artwork/summary lookups: each title is tried once per visit, so a failed lookup can't repeat forever.
-    const fresh = (data || []).filter(r => !metaTried.has(granaryNormaliseTitle(r.title)));
-    if (granaryMetadataSetupReady && !metaBusy && fresh.length) { fresh.forEach(r => metaTried.add(granaryNormaliseTitle(r.title))); metaBusy = true; startGranaryMetadataLookups(fresh).finally(() => { metaBusy = false; }); }
+    const todo = NX.groups.filter(g => !g.meta && !metaTried.has(g.key)).slice(0, 4);
+    if (granaryMetadataSetupReady && !metaBusy && todo.length) {
+      todo.forEach(g => metaTried.add(g.key)); metaBusy = true;
+      startGranaryMetadataLookups(todo.map(g => ({ title: g.title }))).finally(() => { metaBusy = false; if (NX.groups.some(g => !g.meta && !metaTried.has(g.key))) setTimeout(openLibrary, 500); });
+    }
   };
   function sortedGroups() {
     const g = [...NX.groups];
@@ -338,7 +355,7 @@
     renderDays();
     if (location.hash === '#library') showTab('library');
     let lastPhone = NX.phone();
-    addEventListener('resize', () => { const p = NX.phone(); if (p !== lastPhone) { lastPhone = p; setWindow(startHour); render(); } });
+    addEventListener('resize', () => { const p = NX.phone(); if (p !== lastPhone) { lastPhone = p; setWindow(startHour); render(); } else sizeRows($('nxGrid')); });
     // On a TV, start with the selected programme focused.
     if (NX.tv) { const t = setInterval(() => { const cur = NX.tiles.get(NX.sel); if (cur) { clearInterval(t); cur.el.focus(); document.documentElement.classList.add('remoteNav'); } }, 300); setTimeout(() => clearInterval(t), 20000); }
   });
