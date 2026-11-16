@@ -36,7 +36,7 @@ async function open(url, vp) {
   return page;
 }
 // ── iPad ──
-let page = await open('next.html', { width: 1180, height: 820 });
+let page = await open('index.html', { width: 1180, height: 820 });
 check(await page.locator('.gr').count() === 5, 'five channel rows');
 check((await page.textContent('#windowLabel')).includes('19:00') && (await page.textContent('#windowLabel')).includes('24:00'), 'opens at 19:00–24:00: ' + await page.textContent('#windowLabel'));
 check(/on now/.test(await page.textContent('#panel .meta')), 'panel starts on a programme on now: ' + await page.textContent('#panel .meta'));
@@ -70,8 +70,8 @@ check(await page.locator('.st').count() === 1, 'Remove from library (press twice
 await page.click('#nxSettings'); check(await page.locator('#settingsPanel.open #manage').isVisible(), 'settings panel opens with channel options');
 check(page.errs.length === 0, 'no page errors ' + page.errs.join(' | '));
 await page.context().close();
-// ── TV remote ──
-page = await open('next.html?tv=1', { width: 1920, height: 1080 });
+// ── TV remote (tv.html is now the new design, TV mode) ──
+page = await open('tv.html', { width: 1920, height: 1080 });
 await page.waitForTimeout(800);
 let k = await page.evaluate(() => document.activeElement.className);
 check(/tile/.test(k), 'TV starts with a programme focused: ' + k);

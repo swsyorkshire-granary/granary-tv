@@ -29,7 +29,7 @@ await page.route('https://www.ontvnow.co.uk/**', r => { const u = new URL(r.requ
   for (let d = 0; d < 7; d++) for (let h = 0; h < 24; h += 2) out.push({ title: id === 14 && (d === 0 && h === 0 || d === 2 && h === 20 || d === 3 && h === 20) ? (d === 3 ? 'New: Vera' : 'Vera') : 'Other ' + id + '-' + d + '-' + h, start: at(d, h), end: at(d, h + 2) });
   return r.fulfill({ contentType: 'application/json', body: JSON.stringify({ data: out }) }); });
 await page.addInitScript(s => localStorage.setItem('agrid-channel-ids', s), JSON.stringify([{ id: 3, display: 'BBC One', sourceName: 'BBC One Yorkshire HD' }, { id: 14, display: 'ITV3 HD', sourceName: 'ITV3 HD' }]));
-await page.goto(base + '/index.html'); await page.waitForSelector('.program'); await page.waitForTimeout(1500);
+await page.goto(base + '/classic.html'); await page.waitForSelector('.program'); await page.waitForTimeout(1500);
 const row = await page.evaluate(() => window.__db.library_items[0]);
 check(row.series_link === true, 'another showing found → series link switched on automatically');
 check(row.next_airing_at === new Date(+new Date(new Date().setHours(0,0,0,0)) + 2 * 864e5 + 20 * 36e5).toISOString() && row.next_airing_channel === 'ITV3 HD', 'next airing stored: ' + row.next_airing_at + ' ' + row.next_airing_channel);

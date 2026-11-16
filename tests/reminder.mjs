@@ -16,7 +16,7 @@ await page.route('https://cdn.jsdelivr.net/**', r => r.fulfill({ contentType: 't
 await page.route('https://api.tvmaze.com/**', r => r.fulfill({ contentType: 'application/json', body: '[]' }));
 await page.route('https://www.ontvnow.co.uk/**', r => { const u = new URL(r.request().url()); if (u.pathname.endsWith('/channels')) return r.fulfill({ contentType: 'application/json', body: JSON.stringify({ data: [{ id: 3, name: 'BBC One Yorkshire' }, { id: 9, name: 'ITV1 Yorkshire' }] }) });
   const d = new Date(); d.setHours(0, 0, 0, 0); const out = []; for (let h = 0; h < 24; h += 1) { const s = new Date(+d + h * 36e5); out.push({ title: 'P' + u.searchParams.get('channel_id') + '-' + h, start: s.toISOString(), end: new Date(+s + 36e5).toISOString() }); } return r.fulfill({ contentType: 'application/json', body: JSON.stringify({ data: out }) }); });
-await page.goto(base + '/tv.html'); await page.waitForSelector('.program'); await page.waitForTimeout(400);
+await page.goto(base + '/classic-tv.html'); await page.waitForSelector('.program'); await page.waitForTimeout(400);
 await page.evaluate(() => document.getElementById('libraryBtn').click()); await page.waitForTimeout(800);
 const clickLink = async (re, show) => page.evaluate(([src, show]) => { const r = new RegExp(src); const row = [...document.querySelectorAll('#libraryContent *')].filter(x => x.textContent.includes(show) && x.querySelector('a') && !x.textContent.includes(show === 'Vera' ? 'Bake Off' : 'Vera')).sort((p, q) => p.querySelectorAll('*').length - q.querySelectorAll('*').length).pop(); const a = [...row.querySelectorAll('a')].find(x => r.test(x.textContent)); a.click(); return a.textContent; }, [re.source, show]);
 console.log('   clicked:', await clickLink(/ITVX/, 'Vera'));

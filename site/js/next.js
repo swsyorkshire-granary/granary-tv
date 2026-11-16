@@ -6,7 +6,7 @@
   const UA = navigator.userAgent || '';
   const NX = {
     tab: 'guide', sel: null, libSel: null, libFilter: 'all', groups: [], libKeys: new Map(), tiles: new Map(), libLoaded: false,
-    tv: !!window.GranaryApp || params.has('tv') || /AFT|Web0S|webOS|SMART-TV|SmartTV|Tizen|BRAVIA|NetCast|HbbTV/i.test(UA),
+    tv: !!window.GranaryApp || !!window.GRANARY_FORCE_TV || params.has('tv') || /AFT|Web0S|webOS|SMART-TV|SmartTV|Tizen|BRAVIA|NetCast|HbbTV/i.test(UA),
     phone: () => matchMedia('(max-width:700px)').matches,
   };
   window.NX = NX;
@@ -352,7 +352,7 @@
   document.addEventListener('DOMContentLoaded', () => {
     $('tabGuide').onclick = () => showTab('guide');
     $('tabLibrary').onclick = () => showTab('library');
-    if (NX.tv) $('classicLink').href = 'tv.html?classic=1';
+    if (NX.tv) $('classicLink').href = 'classic-tv.html';
     $('nxSettings').onclick = () => $('settingsPanel').classList.add('open');
     document.querySelectorAll('.cloudPanel .close').forEach(b => { if (!b.onclick) b.onclick = () => b.closest('.cloudPanel').classList.remove('open'); });
     $('settingsPanel').addEventListener('click', e => { if (e.target.id === 'manage' || e.target.id === 'servicesBtn' || e.target.id === 'signInBtn') $('settingsPanel').classList.remove('open'); if (e.target.id === 'refresh') { $('settingsPanel').classList.remove('open'); } }, true);

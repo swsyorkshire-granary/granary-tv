@@ -20,7 +20,7 @@ await page.route('https://www.ontvnow.co.uk/**', r => { const u = new URL(r.requ
   return r.fulfill({ contentType: 'application/json', body: JSON.stringify({ data: out }) }); });
 const rowsFilled = () => page.$$eval('.channel-row', rs => rs.filter(r => !/Not in feed/.test(r.querySelector('.channel').textContent)).map(r => r.querySelectorAll('.program').length));
 // 1. busy twice for Channel 4 and 5, then OK → retries fill every row, no error notice
-await page.goto(base + '/index.html'); await page.waitForFunction(() => /refreshed|unavailable|saved/i.test(document.getElementById('status').textContent), null, { timeout: 30000 });
+await page.goto(base + '/classic.html'); await page.waitForFunction(() => /refreshed|unavailable|saved/i.test(document.getElementById('status').textContent), null, { timeout: 30000 });
 let filled = await rowsFilled();
 check(filled.length === 3 && filled.every(n => n > 0), 'busy service retried; all rows filled: ' + JSON.stringify(filled));
 check((await page.textContent('#status')) === 'Listings refreshed', 'status: ' + await page.textContent('#status'));

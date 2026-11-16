@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#fafaf9"><title>Granary TV</title>
-<link rel="stylesheet" href="css/next.css?v=26">
+<link rel="stylesheet" href="css/next.css?v=27">
 </head><body class="nx">
 <header class="top">
   <div class="logo">Granary<i>.</i>tv</div>
@@ -38,7 +38,7 @@
     <button id="refresh">Refresh listings</button>
     <label class="setRow">Guide opens at <select id="nxHours"></select></label>
   </div>
-  <p class="muted small">Listings from the onTVnow public UK listings feed. <a href="index.html?classic=1" id="classicLink">Use the classic design</a> · <a href="link-test-bench.html">Link Test Bench</a></p>
+  <p class="muted small">Listings from the onTVnow public UK listings feed. <a href="classic.html" id="classicLink">Use the classic design</a> · <a href="link-test-bench.html">Link Test Bench</a></p>
 </div></div>
 
 <!-- More options for a programme or show -->
@@ -53,6 +53,7 @@
 <div class="cloudPanel" id="authPanel"><div class="cloudCard">
   <div class="cardHead"><h2>Granary TV account</h2><button class="close" onclick="document.getElementById('authPanel').classList.remove('open')">Close</button></div>
   <p class="muted">Use the same email and password on the iPad, phone and TV.</p>
+  <p class="muted small"><b>New to Granary TV?</b> Enter your email and choose <b>Email me a sign-in link</b> – that creates your account. Once you’re in, set a password from here.</p>
   <input id="authEmail" type="email" autocomplete="email" placeholder="Your email address">
   <input id="authPassword" type="password" autocomplete="current-password" placeholder="Password (at least 8 characters)">
   <button id="passwordSignInBtn" class="primary">Sign in with password</button>
@@ -74,8 +75,8 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.89.0/dist/umd/supabase.js"></script>
-<script src="js/library.js?v=26"></script>
-<script src="js/guide.js?v=26"></script>
-<script src="js/next.js?v=26"></script>
-<script src="js/tvnav.js?v=26"></script>
+<script src="js/library.js?v=27"></script>
+<script src="js/guide.js?v=27"></script>
+<script src="js/next.js?v=27"></script>
+<script src="js/tvnav.js?v=27"></script>
 </body></html>

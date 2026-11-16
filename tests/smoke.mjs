@@ -9,7 +9,7 @@ const root = path.resolve(path.dirname(new URL(import.meta.url).pathname), '../s
 const types = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css' };
 const server = http.createServer((req, res) => {
   let p = decodeURIComponent(new URL(req.url, 'http://x').pathname);
-  if (p === '/') p = '/index.html';
+  if (p === '/') p = '/classic.html';
   const f = path.join(root, p);
   if (!f.startsWith(root) || !fs.existsSync(f)) { res.writeHead(404); return res.end('nf'); }
   res.writeHead(200, { 'content-type': types[path.extname(f)] || 'application/octet-stream' });
@@ -71,7 +71,7 @@ async function openPage(url, { storage } = {}) {
 }
 const rows = page => page.$$eval('.channel-row .channel', els => els.map(e => [e.querySelector('strong').textContent, e.querySelector('small').textContent]));
 
-for (const url of ['/index.html', '/tv.html']) {
+for (const url of ['/classic.html', '/classic-tv.html']) {
   console.log(`\n== ${url} (fresh device)`);
   const { page, errors, ctx } = await openPage(url);
   const r = await rows(page);
@@ -99,7 +99,7 @@ for (const url of ['/index.html', '/tv.html']) {
   const links = await page.$$eval('#libraryContent a', as => as.map(a => [a.textContent, a.href]));
   check(links.some(([t, h]) => /ITVX/.test(t) && h === 'https://www.itv.com/watch/vera/1a5726'), 'library uses verified ITVX link for Vera');
   check(await page.$('#libraryPanel a[href="link-test-bench.html"]') !== null, 'library has Link Test Bench button');
-  if (url === '/tv.html') check(await page.evaluate(() => document.body.classList.contains('tv') && [...document.styleSheets].some(s => (s.href || '').includes('tv.css'))), 'TV stylesheet applied');
+  if (url === '/classic-tv.html') check(await page.evaluate(() => document.body.classList.contains('tv') && [...document.styleSheets].some(s => (s.href || '').includes('tv.css'))), 'TV stylesheet applied');
   check(errors.length === 0, 'no console errors' + (errors.length ? ': ' + errors.join(' | ') : ''));
   await ctx.close();
 }
@@ -109,7 +109,7 @@ console.log('\n== existing iPad selection (London ITV + old Sky rows + hand-adde
   const old = [{ id: 1, display: 'BBC One', sourceName: 'BBC One London' }, { id: 5, display: 'BBC Two', sourceName: 'BBC Two' }, { id: 7, display: 'ITV1', sourceName: 'ITV1 London' },
     { id: 11, display: 'Channel 4', sourceName: 'Channel 4+1 ROI' }, { id: 13, display: 'Channel 5', sourceName: 'Channel 5' }, { id: null, display: 'Sky Atlantic', sourceName: 'Sky Atlantic' },
     { id: null, display: 'Sky Crime', sourceName: 'Sky Crime' }, { id: 14, display: 'ITV3 HD', sourceName: 'ITV3 HD' }];
-  const { page, errors, ctx } = await openPage('/index.html', { storage: old });
+  const { page, errors, ctx } = await openPage('/classic.html', { storage: old });
   const r = await rows(page);
   console.log('   rows:', JSON.stringify(r));
   check(r.some(x => x[0] === 'ITV1' && x[1] === 'ITV1 Yorkshire'), 'saved ITV1 London moved to Yorkshire');

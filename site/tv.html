@@ -1,37 +1,83 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#101827"><title>Granary TV</title>
-<link rel="stylesheet" href="css/app.css?v=21">
-<link rel="stylesheet" href="css/tv.css?v=21">
-</head><body class="tv">
-<header><div class="brand"><div><h1>GRANARY TV</h1><div class="sub">Your rolling 7-day television guide</div></div><div class="actions"><button id="refresh">↻ Refresh</button><button id="manage">＋ Channels</button></div></div><div class="daysbar"><button id="prev">‹</button><div class="days" id="days"></div><button id="next">›</button></div></header>
-<div class="cloudBar"><button id="signInBtn">Sign in / Password</button><button id="signOutBtn" style="display:none">Sign out</button><button id="libraryBtn" disabled>My Library</button><button id="servicesBtn" disabled>My Streaming Services</button><a href="next.html?tv=1" class="tryNew" style="padding:9px 12px;border-radius:9px;background:#ff5a3c;color:#fff;text-decoration:none;font-weight:700">✨ Try the new design</a><span id="cloudStatus" class="cloudStatus">Connecting to Granary TV library…</span></div>
-<div class="toolbar"><label>START</label><select id="start"></select><label>END</label><select id="end"></select><span class="status" id="status">Finding UK channels…</span></div><div class="notice" id="notice"></div>
-<main class="guide-wrap"><div class="guide" id="guide"></div></main><footer>Listings supplied by onTVnow public UK TV listings feed. Programme data is not a video stream; coverage depends on the source.</footer>
-<div class="modal" id="modal"><div class="sheet"><button class="close" id="close">Close</button><h2 id="modalTitle">Channels</h2><p id="modalHelp">Tap a channel to remove it, or add another channel from the listings directory.</p><div class="chips" id="chips"></div><select id="addSelect"></select><button id="addButton">Add channel</button></div></div>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#fafaf9"><title>Granary TV</title>
+<link rel="stylesheet" href="css/next.css?v=27">
+</head><body class="nx">
+<header class="top">
+  <div class="logo">Granary<i>.</i>tv</div>
+  <nav class="tabs" role="tablist"><button id="tabGuide" class="on" role="tab">Guide</button><button id="tabLibrary" role="tab">Library</button></nav>
+  <div class="days" id="nxDays"></div>
+  <button id="nxSettings" class="iconBtn" aria-label="Settings">⚙</button>
+</header>
+
+<main>
+  <section id="panel" class="info" aria-live="polite"></section>
+  <section id="guideView">
+    <div class="grid" id="nxGrid"><div class="loading">Loading the guide…</div></div>
+    <div class="gridBar">
+      <button id="earlier">‹ Earlier</button><span id="windowLabel" class="winLabel"></span><button id="later">Later ›</button>
+      <button id="nowBtn">Now</button>
+      <span class="status" id="status"></span>
+    </div>
+    <div class="notice" id="notice"></div>
+  </section>
+  <section id="libraryView" hidden>
+    <div class="chips" id="libChips"></div>
+    <div class="lib" id="libGrid"></div>
+  </section>
+</main>
+
+<!-- Settings -->
+<div class="cloudPanel" id="settingsPanel"><div class="cloudCard">
+  <div class="cardHead"><h2>Settings</h2><button class="close">Close</button></div>
+  <p id="cloudStatus" class="muted">Connecting…</p>
+  <div class="settingsList">
+    <button id="signInBtn">Sign in</button>
+    <button id="signOutBtn" style="display:none">Sign out</button>
+    <button id="servicesBtn" disabled>My streaming services</button>
+    <button id="manage">Add or remove channels</button>
+    <button id="refresh">Refresh listings</button>
+    <label class="setRow">Guide opens at <select id="nxHours"></select></label>
+  </div>
+  <p class="muted small">Listings from the onTVnow public UK listings feed. <a href="classic.html" id="classicLink">Use the classic design</a> · <a href="link-test-bench.html">Link Test Bench</a></p>
+</div></div>
+
+<!-- More options for a programme or show -->
+<div class="cloudPanel" id="morePanel"><div class="cloudCard">
+  <div class="cardHead"><h2 id="moreTitle">More</h2><button class="close">Close</button></div>
+  <div id="moreBody"></div>
+</div></div>
+
+<!-- Channels (shared with the classic design) -->
+<div class="modal" id="modal"><div class="sheet"><div class="cardHead"><h2 id="modalTitle">Channels</h2><button class="close" id="close">Close</button></div><p id="modalHelp"></p><div class="chipsList" id="chips"></div><select id="addSelect"></select><button id="addButton">Add channel</button></div></div>
 
 <div class="cloudPanel" id="authPanel"><div class="cloudCard">
-  <button onclick="document.getElementById('authPanel').classList.remove('open')">Close</button>
-  <h2>Granary TV account</h2><p>Use your existing account on both devices. Set a password here on the iPad first, then use it to sign in on the TV.</p>
+  <div class="cardHead"><h2>Granary TV account</h2><button class="close" onclick="document.getElementById('authPanel').classList.remove('open')">Close</button></div>
+  <p class="muted">Use the same email and password on the iPad, phone and TV.</p>
+  <p class="muted small"><b>New to Granary TV?</b> Enter your email and choose <b>Email me a sign-in link</b> – that creates your account. Once you’re in, set a password from here.</p>
   <input id="authEmail" type="email" autocomplete="email" placeholder="Your email address">
   <input id="authPassword" type="password" autocomplete="current-password" placeholder="Password (at least 8 characters)">
-  <button id="passwordSignInBtn">Sign in with password</button>
-  <button id="setPasswordBtn" style="display:none">Set / change my password</button>
+  <button id="passwordSignInBtn" class="primary">Sign in with password</button>
+  <button id="setPasswordBtn" style="display:none" class="primary">Set / change my password</button>
   <button id="sendLinkBtn">Email me a sign-in link (backup)</button><div id="authMessage" class="cloudMessage"></div>
 </div></div>
 <div class="cloudPanel" id="servicesPanel"><div class="cloudCard">
-  <button onclick="document.getElementById('servicesPanel').classList.remove('open')">Close</button>
-  <h2>My Streaming Services</h2><p>Choose the services you use. These preferences follow your Granary TV account on both the iPad and television.</p>
-  <div id="servicesChoices" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:14px 0"></div>
-  <button id="saveServicesBtn">Save my services</button><div id="servicesMessage" class="cloudMessage"></div>
-</div></div>
-<div class="cloudPanel" id="libraryPanel"><div class="cloudCard">
-  <div class="libraryHead"><h2>My Granary TV Library</h2><div style="display:flex;gap:8px;align-items:center"><a href="link-test-bench.html" class="moreProviders" style="text-decoration:none;padding:10px 14px">Link Test Bench</a><button onclick="document.getElementById('libraryPanel').classList.remove('open')">Close ✕</button></div></div>
-  <div id="libraryContent">Loading…</div>
+  <div class="cardHead"><h2>My streaming services</h2><button class="close" onclick="document.getElementById('servicesPanel').classList.remove('open')">Close</button></div>
+  <p class="muted">Choose the services you use. These follow your account on every device.</p>
+  <div id="servicesChoices" class="servicesChoices"></div>
+  <button id="saveServicesBtn" class="primary">Save my services</button><div id="servicesMessage" class="cloudMessage"></div>
 </div></div>
 
+<!-- Used by the shared listings and library code; not shown in this design -->
+<div class="legacy" hidden aria-hidden="true">
+  <div id="days"></div><div id="guide"></div><select id="start"></select><select id="end"></select>
+  <button id="prev"></button><button id="next"></button><button id="libraryBtn"></button>
+  <div class="cloudPanel" id="libraryPanel"><div id="libraryContent"></div></div>
+</div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.89.0/dist/umd/supabase.js"></script>
-<script src="js/library.js?v=24"></script>
-<script src="js/guide.js?v=21"></script>
-<script src="js/tvnav.js?v=21"></script>
+<script src="js/library.js?v=27"></script>
+<script src="js/guide.js?v=27"></script>
+<script>window.GRANARY_FORCE_TV=true</script>
+<script src="js/next.js?v=27"></script>
+<script src="js/tvnav.js?v=27"></script>
 </body></html>
