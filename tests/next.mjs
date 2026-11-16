@@ -11,7 +11,7 @@ window.__ops=[];
 function q(t){const st={op:'select',ids:null};const p={select(){return p},eq(){return p},order(){return p},limit(){return p},ilike(){return p},maybeSingle(){st.one=1;return p},single(){st.one=1;return p},
  in(col,ids){st.ids=ids;return p},insert(r){st.op='insert';st.row=r;return p},upsert(r){st.op='upsert';st.row=r;return p},update(r){st.op='update';st.row=r;return p},delete(){st.op='delete';return p},
  then(a,b){const L=db[t]=db[t]||[];let d=L;if(st.op!=='select')window.__ops.push({t,op:st.op,row:st.row,ids:st.ids});
-  if(st.op==='insert'){L.push(Object.assign({id:'n'+L.length,created_at:new Date().toISOString()},st.row));d=st.row}
+  if(st.op==='insert'){[].concat(st.row).forEach(r=>L.push(Object.assign({id:'n'+L.length,created_at:new Date().toISOString()},r)));d=st.row}
   if(st.op==='update'){L.forEach(r=>{if(!st.ids||st.ids.includes(r.id))Object.assign(r,st.row)});d=st.row}
   if(st.op==='delete'){db[t]=L.filter(r=>!(st.ids||[]).includes(r.id));d=null}
   if(st.op==='upsert'){d=st.row}
@@ -56,7 +56,7 @@ check(await page.locator('.st').count() === 2, 'library tab shows 2 shows: ' + a
 check((await page.locator('.st').first().textContent()).includes('Vera'), 'show on now/next sorted first');
 check(/READY|ON NOW/.test(await page.locator('.st', { hasText: 'Vera' }).textContent()), 'Vera (already shown) marked ready / on now');
 check(/COMING UP/.test(await page.locator('.st', { hasText: 'Coast' }).textContent()), 'Coast (not shown yet) marked COMING UP');
-await page.locator('.st', { hasText: 'Coast' }).click();
+await page.locator('.st', { hasText: 'Coast' }).click(); if (await page.locator('#tileMenu.open').count()) await page.locator('#tileMenu .close').click();
 check((await page.textContent('#panel h1')).startsWith('Coast'), 'library tile selects into panel');
 check(/Not shown yet/.test(await page.textContent('#panel .meta')) && /yet/.test(await page.textContent('#panel .primaryProvider')), 'panel says not shown yet and the watch button is toned down');
 const before = await page.evaluate(() => window.__ops.length);
@@ -65,8 +65,18 @@ const up = await page.evaluate(n => window.__ops.slice(n).find(o => o.op === 'up
 check(up && typeof up.row.series_link === 'boolean', 'Series button updates the series link');
 await page.locator('#panel button[aria-label="More options"]').click();
 check(await page.locator('#morePanel.open .providerLookup').count() >= 3, 'More shows other services');
-await page.locator('#morePanel .danger').click(); await page.locator('#morePanel .danger').click(); await page.waitForTimeout(600);
-check(await page.locator('.st').count() === 1, 'Remove from library (press twice) removes the show');
+await page.locator('#morePanel .close').click();
+await page.locator('.st', { hasText: 'Coast' }).click();   // already selected → options box
+check(await page.locator('#tileMenu.open').isVisible(), 'pressing the highlighted show opens the options box');
+check(/Remove from library/.test(await page.textContent('#tileMenu')) && /series link/.test(await page.textContent('#tileMenu')), 'box offers watch/series/remove');
+await page.locator('#tileMenu .danger').click(); await page.waitForTimeout(600);
+check(await page.locator('.st').count() === 1 && !(await page.locator('#tileMenu.open').count()), 'one press removes the show');
+check(/Removed Coast/.test(await page.textContent('#toast')), 'shows "Removed" with Undo');
+await page.locator('#toast button').click(); await page.waitForTimeout(700);
+check(await page.locator('.st', { hasText: 'Coast' }).count() === 1, 'Undo puts it back');
+await page.locator('.st', { hasText: 'Coast' }).click();
+await page.locator('#tileMenu .danger').click(); await page.waitForTimeout(600);
+check(await page.locator('.st').count() === 1, 'removed again for the rest of the test');
 await page.click('#nxSettings'); check(await page.locator('#settingsPanel.open #manage').isVisible(), 'settings panel opens with channel options');
 check(page.errs.length === 0, 'no page errors ' + page.errs.join(' | '));
 await page.context().close();
@@ -89,6 +99,13 @@ await page.keyboard.press('ArrowDown'); await page.keyboard.press('ArrowDown');
 await page.evaluate(() => { const t = [...document.querySelectorAll('.tile')].find(x => /Coast/.test(x.textContent)) || document.querySelector('.tile'); t.focus(); });
 await page.keyboard.press('Enter'); await page.waitForTimeout(100);
 check(await page.evaluate(() => !!document.activeElement.closest('#panel .acts')), 'OK on a programme jumps to its buttons');
+await page.keyboard.press('Escape');
+await page.evaluate(() => NX.showTab('library')); await page.waitForTimeout(500);
+await page.evaluate(() => document.querySelector('#libGrid .st').focus());
+await page.keyboard.press('Enter'); await page.waitForTimeout(150);
+check(await page.locator('#tileMenu.open').count() === 1 && await page.evaluate(() => !!document.activeElement.closest('#tileMenu')), 'TV: OK on a library show opens the box with focus inside');
+await page.keyboard.press('Escape'); await page.waitForTimeout(100);
+check(!(await page.locator('#tileMenu.open').count()) && await page.evaluate(() => document.activeElement.classList.contains('st')), 'TV: Back closes the box and returns to the show');
 check(page.errs.length === 0, 'no TV page errors ' + page.errs.join(' | '));
 await page.context().close();
 // ── Phone ──

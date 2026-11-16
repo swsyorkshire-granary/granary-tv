@@ -280,7 +280,8 @@
       else if (!g.aired) sm.textContent = g.next ? 'First shown ' + fmtWhen(g.next) : 'Not shown yet';
       else sm.textContent = 'Ready to watch' + (g.next ? ' · next ' + fmtWhen(g.next) : '');
       t.append(art, h('b', '', (g.linked ? '🔗 ' : '') + g.title), sm);
-      t.onclick = () => selectShow(g.key, true);
+      // First press selects; pressing the highlighted show again opens its options box (on a TV, OK opens it straight away).
+      t.onclick = () => { if (NX.libSel === g.key && !NX.phone()) openTileMenu(g, t); else selectShow(g.key, true); };
       t.onfocus = () => { if (NX.libSel !== g.key) selectShow(g.key, false); };
       grid.append(t);
     });
@@ -289,10 +290,49 @@
   function selectShow(k, activate) {
     NX.libSel = k; $('libGrid').querySelectorAll('.st').forEach(e => e.classList.toggle('sel', e.dataset.k === k));
     showLibraryPanel();
-    if (activate) {
-      if (NX.phone()) $('panel').classList.add('open');
-      else if (NX.tv || document.documentElement.classList.contains('remoteNav')) { const first = $('panel').querySelector('.acts .btn'); if (first) first.focus(); }
-    }
+    if (activate && NX.phone()) $('panel').classList.add('open');
+  }
+  function openTileMenu(g, tile) {
+    const menu = $('tileMenu'), card = menu.querySelector('.menuCard'), body = $('tileMenuBody');
+    $('tileMenuTitle').textContent = g.title; body.innerHTML = '';
+    const ready = g.aired || g.onNow, service = providerForChannel(g.items[0].channel || g.channel), seen = () => granaryMarkSeriesSeen(g.items);
+    if (g.onNow) { const w = watchLiveBtn(channelObj(g.channel)); if (w) { w.className = 'mi watchLive'; w.addEventListener('click', seen); body.append(w); } }
+    const pb = providerBtn(g.title, service, 'mi', seen); if (!ready) pb.textContent = 'Not on ' + service + ' yet – check anyway'; body.append(pb);
+    const sb = h('button', 'mi', g.linked ? '🔗 Turn series link off' : '🔗 Turn series link on');
+    sb.onclick = async () => { closeTileMenu(); await granarySetSeriesLink(g.items, !g.linked); };
+    const rm = h('button', 'mi danger', '🗑 Remove from library'); rm.onclick = () => { closeTileMenu(); removeShow(g); };
+    const cancel = h('button', 'mi close', 'Close'); cancel.onclick = closeTileMenu;
+    body.append(sb, rm, cancel);
+    // place the box over the tile (centred on phones / small screens)
+    const r = tile.getBoundingClientRect(), w = Math.min(card.offsetWidth || 320, innerWidth - 24);
+    card.style.left = Math.max(12, Math.min(innerWidth - w - 12, r.left + r.width / 2 - w / 2)) + 'px';
+    card.style.top = Math.max(12, Math.min(innerHeight - 340, r.top + 24)) + 'px';
+    NX.menuReturn = tile; menu.classList.add('open');
+    setTimeout(() => { const f = body.querySelector('.mi'); if (f) f.focus(); }, 30);
+  }
+  function closeTileMenu() { $('tileMenu').classList.remove('open'); const t = NX.menuReturn; if (t && t.isConnected) t.focus({ preventScroll: true }); }
+  NX.closeTileMenu = closeTileMenu;
+  let undoTimer = null;
+  async function removeShow(g) {
+    $('panel').classList.remove('open');
+    const rows = g.items.map(r => ({ ...r }));
+    const { error } = await granaryClient.from('library_items').delete().in('id', rows.map(r => r.id));
+    if (error) { toast('Could not remove: ' + error.message); return; }
+    NX.libSel = null; await openLibrary();
+    toast('Removed ' + g.title, 'Undo', async () => {
+      const { error: e2 } = await granaryClient.from('library_items').insert(rows);
+      if (e2) toast('Could not undo: ' + e2.message); else { NX.libSel = g.key; await openLibrary(); toast('Put back ' + g.title); }
+    });
+  }
+  function toast(text, action, fn) {
+    const el = $('toast'); el.innerHTML = ''; el.append(h('span', '', text));
+    if (action) { const b = h('button', '', action); b.onclick = () => { hideToast(); fn(); }; el.append(b); }
+    el.classList.add('show'); clearTimeout(undoTimer); undoTimer = setTimeout(hideToast, action ? 8000 : 3000);
+    if (action && (NX.tv || document.documentElement.classList.contains('remoteNav'))) el.querySelector('button').focus();
+  }
+  function hideToast() {
+    const el = $('toast'), had = el.contains(document.activeElement); el.classList.remove('show');
+    if (had) { const t = document.querySelector('#libGrid .st.sel') || document.querySelector('#libGrid .st'); if (t) t.focus(); }
   }
   function channelObj(name) {
     const n = norm(name); return channels.find(c => norm(c.display) === n || norm(c.sourceName) === n) || { display: name, sourceName: name };
@@ -319,6 +359,7 @@
     const sb = h('button', 'btn', g.linked ? '🔗 Series: On' : '🔗 Series: Off');
     sb.onclick = async () => { sb.disabled = true; await granarySetSeriesLink(g.items, !g.linked); };
     acts.append(sb);
+    if (NX.phone()) { const rm = h('button', 'btn', '🗑 Remove'); rm.onclick = () => removeShow(g); acts.append(rm); }
     const more = h('button', 'btn', '⋯'); more.setAttribute('aria-label', 'More options'); more.onclick = () => openMore(g.title, service, desc, g); acts.append(more);
     panel.innerHTML = ''; panel.append(closeBtn(), text, acts);
   }
@@ -356,7 +397,7 @@
     $('nxSettings').onclick = () => $('settingsPanel').classList.add('open');
     document.querySelectorAll('.cloudPanel .close').forEach(b => { if (!b.onclick) b.onclick = () => b.closest('.cloudPanel').classList.remove('open'); });
     $('settingsPanel').addEventListener('click', e => { if (e.target.id === 'manage' || e.target.id === 'servicesBtn' || e.target.id === 'signInBtn') $('settingsPanel').classList.remove('open'); if (e.target.id === 'refresh') { $('settingsPanel').classList.remove('open'); } }, true);
-    document.querySelectorAll('.cloudPanel').forEach(p => p.addEventListener('click', e => { if (e.target === p) p.classList.remove('open'); }));
+    document.querySelectorAll('.cloudPanel').forEach(p => p.addEventListener('click', e => { if (e.target === p) { p.classList.remove('open'); if (p.id === 'tileMenu') closeTileMenu(); } }));
     $('earlier').onclick = () => { setWindow(startHour - 1); render(); };
     $('later').onclick = () => { setWindow(startHour + 1); render(); };
     $('nowBtn').onclick = () => { const d = new Date(); selected = 0; setWindow(Math.floor((d.getHours() * 60 + d.getMinutes()) / 30) / 2); NX.sel = null; renderDays(); render(); };
