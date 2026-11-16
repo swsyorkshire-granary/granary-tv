@@ -38,6 +38,8 @@ const GRANARY_POSTER_IMAGES = {
 // Automatic programme metadata: TVmaze public API (no API key; CC BY-SA attribution required).
 const GRANARY_TVMAZE_API='https://api.tvmaze.com';
 let granaryMetadataByTitle={}, granaryMetadataSetupReady=false, granaryMetadataBusy=new Set();
+// A lookup is needed if there's no row yet, or the last try found nothing and was over a day ago.
+function granaryMetaNeedsLookup(key){const r=granaryMetadataByTitle[key];return !r||(r.match_status!=='matched'&&Date.now()-new Date(r.updated_at||r.created_at||0).getTime()>864e5);}
 function granaryNormaliseTitle(value){return String(value||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/&/g,'and').replace(/[^a-z0-9]/g,'');}
 async function loadGranaryMetadata(){
   const {data,error}=await granaryClient.from('programme_metadata').select('*');
@@ -45,15 +47,17 @@ async function loadGranaryMetadata(){
   granaryMetadataSetupReady=true;granaryMetadataByTitle={};(data||[]).forEach(row=>granaryMetadataByTitle[row.normalized_title]=row);return null;
 }
 async function resolveGranaryMetadata(title){
-  const key=granaryNormaliseTitle(title);if(!key||granaryMetadataBusy.has(key)||granaryMetadataByTitle[key])return;
+  const key=granaryNormaliseTitle(title);if(!key||granaryMetadataBusy.has(key)||!granaryMetaNeedsLookup(key))return;
   granaryMetadataBusy.add(key);
   try{
     const response=await fetch(GRANARY_TVMAZE_API+'/search/shows?q='+encodeURIComponent(title),{headers:{Accept:'application/json'}});
     if(!response.ok)throw new Error('TVmaze lookup '+response.status);
     const results=await response.json();
-    const exact=(results||[]).filter(x=>granaryNormaliseTitle(x.show?.name)===key);
-    let row={user_id:currentUser.id,normalized_title:key,search_title:title,source:'TVmaze',match_status:'needs_review',source_id:null,matched_title:null,image_url:null,summary:null,source_url:null,genres:[]};
-    if(exact.length===1){const s=exact[0].show;row={...row,match_status:'matched',source_id:s.id,matched_title:s.name,image_url:s.image?.original||s.image?.medium||null,summary:String(s.summary||'').replace(/<[^>]*>/g,' ').replace(/\\s+/g,' ').trim()||null,source_url:s.url||null,genres:s.genres||[],premiered:s.premiered||null};}
+    let exact=(results||[]).filter(x=>granaryNormaliseTitle(x.show?.name)===key);
+    // Several shows with the same name (e.g. "Vera"): prefer the one made for UK television.
+    if(exact.length>1){const uk=exact.filter(x=>(x.show?.network?.country?.code||x.show?.webChannel?.country?.code)==='GB');if(uk.length===1)exact=uk;}
+    let row={updated_at:new Date().toISOString(),user_id:currentUser.id,normalized_title:key,search_title:title,source:'TVmaze',match_status:'needs_review',source_id:null,matched_title:null,image_url:null,summary:null,source_url:null,genres:[]};
+    if(exact.length===1){const s=exact[0].show;row={...row,updated_at:new Date().toISOString(),match_status:'matched',source_id:s.id,matched_title:s.name,image_url:s.image?.original||s.image?.medium||null,summary:String(s.summary||'').replace(/<[^>]*>/g,' ').replace(/\\s+/g,' ').trim()||null,source_url:s.url||null,genres:s.genres||[],premiered:s.premiered||null};}
     const {data,error}=await granaryClient.from('programme_metadata').upsert(row,{onConflict:'user_id,normalized_title'}).select().single();
     if(!error&&data)granaryMetadataByTitle[key]=data;
   }catch(e){console.warn('Granary TV metadata lookup failed for',title,e);}
@@ -62,7 +66,7 @@ async function resolveGranaryMetadata(title){
 async function startGranaryMetadataLookups(items){
   if(!granaryMetadataSetupReady||!currentUser)return;
   const titles=[...new Set((items||[]).map(x=>String(x.title||'').trim()).filter(Boolean))];
-  const missing=titles.filter(t=>!granaryMetadataByTitle[granaryNormaliseTitle(t)]);
+  const missing=titles.filter(t=>granaryMetaNeedsLookup(granaryNormaliseTitle(t)));
   if(!missing.length)return;
   const before=Object.keys(granaryMetadataByTitle).length;
   await Promise.all(missing.slice(0,4).map(resolveGranaryMetadata));

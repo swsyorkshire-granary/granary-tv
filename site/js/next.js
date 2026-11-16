@@ -227,16 +227,17 @@
       const title = items[0].title.replace(/^\s*(new|live)\s*:\s*/i, '');
       return { key, title, items, next: next && (nextEnd || next) > now ? next : null, nextEnd, onNow: !!(next && next <= now && nextEnd && nextEnd > now),
         channel: i.next_airing_channel || items[0].channel || '', linked: items.some(x => x.series_link), isNew: lastAired > seen,
-        meta: granaryMetadataByTitle[granaryNormaliseTitle(items[0].title)] || granaryMetadataByTitle[granaryNormaliseTitle(title)] };
+        meta: [granaryNormaliseTitle(title), granaryNormaliseTitle(items[0].title)].map(k => granaryMetadataByTitle[k]).find(r => r && r.match_status === 'matched') || granaryMetadataByTitle[granaryNormaliseTitle(title)] };
     });
     NX.libLoaded = true;
     renderLibrary(); if (NX.tab === 'guide') render();
     setTimeout(() => granaryAutoFillLibrary(data || []), 0);
     // Artwork/summary lookups: each title is tried once per visit, so a failed lookup can't repeat forever.
-    const todo = NX.groups.filter(g => !g.meta && !metaTried.has(g.key)).slice(0, 4);
+    const needs = g => !(g.meta && g.meta.match_status === 'matched') && granaryMetaNeedsLookup(granaryNormaliseTitle(g.title)) && !metaTried.has(g.key);
+    const todo = NX.groups.filter(needs).slice(0, 4);
     if (granaryMetadataSetupReady && !metaBusy && todo.length) {
       todo.forEach(g => metaTried.add(g.key)); metaBusy = true;
-      startGranaryMetadataLookups(todo.map(g => ({ title: g.title }))).finally(() => { metaBusy = false; if (NX.groups.some(g => !g.meta && !metaTried.has(g.key))) setTimeout(openLibrary, 500); });
+      startGranaryMetadataLookups(todo.map(g => ({ title: g.title }))).finally(() => { metaBusy = false; if (NX.groups.some(needs)) setTimeout(openLibrary, 500); });
     }
   };
   function sortedGroups() {
