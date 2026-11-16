@@ -3,7 +3,7 @@
 html{font-size:15px}
 html.tv{font-size:calc(100vw / 80)}            /* 24px on a 1080p TV, scales with any TV browser */
 *{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--ink);font:1rem/1.35 Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased;min-height:100vh}
+body{margin:0;overflow-x:hidden;background:var(--bg);color:var(--ink);font:1rem/1.35 Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased;min-height:100vh}
 button,select,input{font:inherit;color:inherit}
 button{cursor:pointer;border:0;background:none;padding:0}
 a{color:inherit}
@@ -69,14 +69,15 @@ main{padding:0 1.7rem 1.7rem}
 .chip{padding:.45rem .95rem;border-radius:999px;background:#fff;font-weight:600;font-size:.87rem;color:var(--soft);box-shadow:0 1px 2px #0000000f}
 .chip.on{background:var(--ink);color:#fff}
 .lib{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.9rem}
-.st{background:var(--card);border-radius:1.05rem;padding:.6rem .6rem .9rem;display:grid;gap:.35rem;text-align:left;box-shadow:0 1px 2px #0000000a;align-content:start}
+.st{min-width:0;overflow:hidden;background:var(--card);border-radius:1.05rem;padding:.6rem .6rem .9rem;display:grid;gap:.35rem;text-align:left;box-shadow:0 1px 2px #0000000a;align-content:start}
 .st .art{height:5.6rem;border-radius:.75rem;padding:.55rem .65rem;display:flex;justify-content:space-between;align-items:flex-start;font-size:.72rem;font-weight:700;color:#4b5563;text-transform:uppercase;letter-spacing:.05em;background-size:cover;background-position:center}
 .st .art.img span:first-child{background:#ffffffd9;padding:.1rem .35rem;border-radius:.3rem}
 .st em{font-style:normal;border-radius:.35rem;padding:.18rem .45rem;font-size:.66rem;letter-spacing:.04em;white-space:nowrap}
 .st em.ready{background:#0f766e;color:#fff}.st em.live{background:var(--acc);color:#fff}.st em.soon{background:#fff;color:#92400e;box-shadow:0 0 0 1px #f3d9b1}
 .st.is-soon .art{filter:saturate(.35) brightness(1.05);opacity:.75}
 .st.is-soon b{color:#4b5563}
-.st b{font-size:1rem;padding:0 .15rem}
+.st b{font-size:1rem;padding:0 .15rem;overflow-wrap:anywhere}
+.st .art span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;margin-right:.4rem}
 .st small{color:var(--soft);font-size:.8rem;padding:0 .15rem}
 .st.sel{box-shadow:0 0 0 2px var(--ink)}
 .live{color:var(--acc);font-weight:700}
@@ -150,7 +151,11 @@ html.tv .tile{font-size:1rem}
   .acts{justify-content:flex-start}
   .sheetClose{display:block;position:absolute;top:.8rem;right:.9rem;width:2.2rem;height:2.2rem;border-radius:999px;background:var(--tile);font-size:1.1rem}
   .lib{grid-template-columns:repeat(2,minmax(0,1fr));gap:.6rem}
-  .st .art{height:4.6rem}
+  .st .art{height:4.6rem;justify-content:flex-end}
+  .st .art span:first-child{display:none}
+  .st em{font-size:.6rem;margin-left:auto}
+  .st b{font-size:.95rem}.st small{font-size:.75rem}
+  .logo{font-size:1.15rem}.tabs button{padding:.4rem .85rem}
   .chips{flex-wrap:nowrap;overflow-x:auto}
   .chip{white-space:nowrap}
 }
