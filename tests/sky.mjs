@@ -115,7 +115,5 @@ skyMode = 'ok';
 page = await open('tv.html', { width: 1920, height: 1080 }, preset);
 await page.evaluate(() => { window.__launched = []; window.GranaryApp = { isApp: () => true, launch: (u, p) => { window.__launched.push([u, p]); return 'started'; }, open: u => window.__launched.push(['open', u]), openWithTitle: u => window.__launched.push(['owt', u]), launchIntentUri: () => 'started' }; });
 await page.evaluate(() => { const t = [...document.querySelectorAll('.tile')].find(x => /Atlantic Drama 21/.test(x.textContent)); t.click(); }); await page.waitForTimeout(700);
-await page.evaluate(() => document.querySelector('#panel .nowList').click()); await page.waitForTimeout(200);
-const launched = await page.evaluate(() => window.__launched);
-check(launched.length === 1 && /^nowtv:\/\/www\.nowtv\.com\/deeplink/.test(launched[0][0]) && launched[0][1] === 'com.bskyb.nowtv.beta' && /PDP_ADD_WATCHLIST/.test(decodeURIComponent(launched[0][0])), 'Fire Stick: NOW list launches the NOW app with its deep link: ' + JSON.stringify(launched).slice(0, 140));
+check(await page.locator('#panel .nowList').count() === 0 && /Open NOW/.test(await page.textContent('#panel .acts')), 'Fire Stick: NOW buttons open the NOW app with the reminder card (its TV app takes no links)');
 await b.close(); server.close(); console.log(fail ? fail + ' FAILED' : 'ALL PASSED'); process.exit(fail ? 1 : 0);

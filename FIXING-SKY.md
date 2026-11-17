@@ -46,7 +46,7 @@ Sky doesn't officially support this, so it can stop working if Sky changes its w
   - `type` must be the short upper-case form (`SERIES`). Tested on the iPad on 17 Nov 2026: `CATALOGUE/SERIES` and `series` only open the home page. Both `nowtv://` and `https://www.nowtv.com/deeplink?…` work there.
   - NOW carries out the action itself in your signed-in app or browser, so Granary TV never needs your NOW password.
   - Checked on 17 Nov 2026 in Chrome: `PDP` opened Billions, and `PDP_ADD_WATCHLIST` added it to My List.
-  - The Fire Stick launches `com.bskyb.nowtv.beta` with the `nowtv://` link, falling back to the nowtv.com page.
+  - **Fire Stick:** NOW's TV app (`com.bskyb.nowtv.beta`) accepts no links at all. Tested 17 Nov 2026: neither `nowtv://` nor `https://www.nowtv.com/...` links reach it. So the Fire Stick opens NOW with the reminder card instead, and has no ＋ NOW list button.
   - Where to find these in NOW's website code: the deeplink bundle, `mobileDevices.gb.deepLinkBaseUrl` in `window.__CONFIGURATION__`.
 - **NOW's private watchlist service can't be used directly:** it needs your NOW sign-in plus a signature for every request (`x-sky-signature`). The deep link avoids that.
 

@@ -190,6 +190,8 @@
     };
   }
   function upgradeToNowPage(a, title, knownUrl) {
+    // Fire Stick: NOW's TV app accepts no links (tested 17 Nov), so keep the normal "open NOW + reminder card" there.
+    if (inApp()) return;
     nowInfo(title, knownUrl).then(info => {
       if (!info || !info.pid || !a.isConnected) return;
       wireNow(a, info, 'PDP', title);
@@ -541,7 +543,6 @@
     $('tabGuide').onclick = () => showTab('guide');
     $('tabLibrary').onclick = () => showTab('library');
     if (NX.tv) $('classicLink').href = 'classic-tv.html';
-    document.querySelectorAll('.fireOnly').forEach(e => e.hidden = !window.GranaryApp);
     $('nxSettings').onclick = () => { showSkyStatus(); $('settingsPanel').classList.add('open'); };
     document.querySelectorAll('.cloudPanel .close').forEach(b => { if (!b.onclick) b.onclick = () => b.closest('.cloudPanel').classList.remove('open'); });
     $('settingsPanel').addEventListener('click', e => { if (e.target.id === 'manage' || e.target.id === 'servicesBtn' || e.target.id === 'signInBtn') $('settingsPanel').classList.remove('open'); if (e.target.id === 'refresh') { $('settingsPanel').classList.remove('open'); } }, true);
