@@ -39,4 +39,12 @@ Sky doesn't officially support this, so it can stop working if Sky changes its w
 - **If it stops working:** the button just falls back to "Open NOW" plus copying the title, so nothing breaks.
   - Run the function with `debug: true` to see NOW's reply.
   - The usual fixes are a new required header, or a change to the `contentSegments` values.
-- **Adding to NOW's watchlist isn't possible this way:** it needs your NOW sign-in plus a signature NOW's app works out for every request (`x-sky-signature`).
+- **Opening and adding to My List use NOW's own deep links,** the same ones NOW's website uses for its "open in app" button:
+  - Format: `nowtv://www.nowtv.com/deeplink?deeplinkData=` + the URL-encoded JSON `{"providerSeriesId":"<id from the search>","type":"CATALOGUE/SERIES","action":"PDP"}`.
+  - On a computer, `https://www.nowtv.com/deeplink?deeplinkData=…` does the same.
+  - `action` is one of `PDP` (programme page), `PDP_ADD_WATCHLIST` (add to My List, then show the page), `PLAY` or `PDPAUTOPLAY`.
+  - NOW carries out the action itself in your signed-in app or browser, so Granary TV never needs your NOW password.
+  - Checked on 17 Nov 2026 in Chrome: `PDP` opened Billions, and `PDP_ADD_WATCHLIST` added it to My List.
+  - The Fire Stick launches `com.bskyb.nowtv.beta` with the `nowtv://` link, falling back to the nowtv.com page.
+  - Where to find these in NOW's website code: the deeplink bundle, `mobileDevices.gb.deepLinkBaseUrl` in `window.__CONFIGURATION__`.
+- **NOW's private watchlist service can't be used directly:** it needs your NOW sign-in plus a signature for every request (`x-sky-signature`). The deep link avoids that.

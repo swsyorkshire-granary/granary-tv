@@ -37,7 +37,7 @@ async function open(url, vp, presetChannels) {
   await page.route('https://api.open-meteo.com/**', r => r.fulfill({ contentType: 'application/json', headers: { 'Access-Control-Allow-Origin': '*' }, body: JSON.stringify({ current: { temperature_2m: 7.4, weather_code: 3 }, daily: { temperature_2m_max: [9], temperature_2m_min: [3] } }) }));
   await page.route('https://api.tvmaze.com/**', r => r.fulfill({ contentType: 'application/json', body: '[]' }));
   await page.route('**/functions/v1/find-links', r => { let b = {}; try { b = JSON.parse(r.request().postData() || '{}'); } catch (e) {}
-    const best = b.services === 'Sky / NOW' && /^Atlantic Drama 2/.test(b.title) ? { 'Sky / NOW': { url: 'https://www.nowtv.com/watch/asset/atlantic-drama/iTEST' } } : {};
+    const best = b.services === 'Sky / NOW' && /^Atlantic Drama 2/.test(b.title) ? { 'Sky / NOW': { url: 'https://www.nowtv.com/watch/asset/atlantic-drama/iTEST', providerSeriesId: 'iTEST', nowType: 'CATALOGUE/SERIES' } } : {};
     r.fulfill({ contentType: 'application/json', headers: { 'Access-Control-Allow-Origin': '*' }, body: JSON.stringify({ best }) }); });
   await page.route('https://www.ontvnow.co.uk/**', r => { const u = new URL(r.request().url()); if (u.pathname.endsWith('/channels')) return r.fulfill({ contentType: 'application/json', body: JSON.stringify({ data: [{ id: 1, name: 'BBC One Yorkshire HD' }, { id: 2, name: 'BBC Two HD' }, { id: 3, name: 'ITV1 Calendar HD' }, { id: 12, name: 'Channel 4 North HD' }, { id: 13, name: '5 HD' }] }) });
     const id = Number(u.searchParams.get('channel_id')), out = [];
@@ -55,9 +55,12 @@ const rows = await page.$$eval('.gr .badge', b => b.map(x => x.textContent));
 check(rows.includes('ATL') && rows.includes('WIT'), 'Sky Atlantic and Sky Witness added to the grid: ' + rows.join(','));
 check(await page.locator('.tile', { hasText: 'Atlantic Drama 20' }).count() === 1 && await page.locator('.tile', { hasText: 'Witness Show 21' }).count() === 1, 'Sky programmes in the grid');
 await page.locator('.tile', { hasText: 'Atlantic Drama 21' }).click();
-check(/Sky synopsis 21/.test(await page.textContent('#panel')) && /Open (in )?NOW/.test(await page.textContent('#panel .acts')) && /nowtv\.com/.test(await page.getAttribute('#panel .primaryProvider', 'href')), 'panel shows Sky synopsis and an Open NOW button to nowtv.com: ' + await page.textContent('#panel .acts'));
+check(/Sky synopsis 21/.test(await page.textContent('#panel')) && /Open (in )?NOW/.test(await page.textContent('#panel .acts')) && /nowtv\.com/.test(await page.getAttribute('#panel .acts a', 'href')), 'panel shows Sky synopsis and an Open NOW button to nowtv.com: ' + await page.textContent('#panel .acts'));
 await page.waitForTimeout(500);
-check(/Open in NOW/.test(await page.textContent('#panel .acts')) && /watch\/asset\/atlantic-drama/.test(await page.getAttribute('#panel .primaryProvider', 'href')), 'NOW button goes straight to the programme page when NOW has it');
+const nowHref = decodeURIComponent(await page.getAttribute('#panel .nowDirect', 'href') || '');
+check(/Open in NOW/.test(await page.textContent('#panel .acts')) && /nowtv\.com\/deeplink/.test(nowHref) && /"providerSeriesId":"iTEST"/.test(nowHref) && /"action":"PDP"/.test(nowHref), 'Open in NOW uses NOW\'s deep link to the programme: ' + nowHref.slice(0, 120));
+const listHref = decodeURIComponent(await page.getAttribute('#panel .nowList', 'href') || '');
+check(/NOW list/.test(await page.textContent('#panel .acts')) && /"action":"PDP_ADD_WATCHLIST"/.test(listHref), '＋ NOW list button adds to NOW My List via NOW\'s own link');
 await page.locator('.tile', { hasText: 'Atlantic Drama 19' }).click(); await page.waitForTimeout(400);
 check(/Open NOW/.test(await page.textContent('#panel .acts')), 'programmes NOW does not have keep Open NOW + copy');
 await page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
@@ -87,4 +90,13 @@ skyMode = 'renumbered';
 page = await open('index.html', { width: 1180, height: 820 }, preset);
 check(await page.locator('.tile', { hasText: 'Renumbered Show 20' }).count() === 1, 'Sky renumbers a channel: fixed automatically');
 check(page.errs.length === 0, 'no page errors ' + page.errs.join(' | '));
+// Fire Stick app: NOW buttons launch the NOW app with NOW's own deep link
+skyMode = 'ok';
+{ const ctx = await b.newContext({ viewport: { width: 1920, height: 1080 } }); await ctx.addInitScript(() => { window.__launched = []; window.GranaryApp = { isApp: () => true, version: () => '1.9', launch: (u, p) => { window.__launched.push([u, p]); return 'started'; }, open: u => window.__launched.push(['open', u]), openWithTitle: u => window.__launched.push(['owt', u]), launchIntentUri: () => 'started', apps: () => '[]', resolve: () => '' }; }); await ctx.close(); }
+page = await open('tv.html', { width: 1920, height: 1080 }, preset);
+await page.evaluate(() => { window.__launched = []; window.GranaryApp = { isApp: () => true, launch: (u, p) => { window.__launched.push([u, p]); return 'started'; }, open: u => window.__launched.push(['open', u]), openWithTitle: u => window.__launched.push(['owt', u]), launchIntentUri: () => 'started' }; });
+await page.evaluate(() => { const t = [...document.querySelectorAll('.tile')].find(x => /Atlantic Drama 21/.test(x.textContent)); t.click(); }); await page.waitForTimeout(700);
+await page.evaluate(() => document.querySelector('#panel .nowList').click()); await page.waitForTimeout(200);
+const launched = await page.evaluate(() => window.__launched);
+check(launched.length === 1 && /^nowtv:\/\/www\.nowtv\.com\/deeplink/.test(launched[0][0]) && launched[0][1] === 'com.bskyb.nowtv.beta' && /PDP_ADD_WATCHLIST/.test(decodeURIComponent(launched[0][0])), 'Fire Stick: NOW list launches the NOW app with its deep link: ' + JSON.stringify(launched).slice(0, 140));
 await b.close(); server.close(); console.log(fail ? fail + ' FAILED' : 'ALL PASSED'); process.exit(fail ? 1 : 0);
