@@ -58,6 +58,7 @@ await page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
 await page.evaluate(() => { const a = document.querySelector('#panel .primaryProvider'); a.removeAttribute('target'); a.href = 'javascript:void 0'; a.click(); }); await page.waitForTimeout(300);
 check(/copied – paste it into NOW/.test(await page.textContent('#toast')), 'tapping it copies the title: ' + await page.textContent('#toast'));
 await page.locator('.tile', { hasText: 'Show 1-21' }).first().click();
+await page.waitForTimeout(300); check(!(await page.evaluate(() => document.getElementById('toast').classList.contains('show'))), 'picking another programme clears the NOW message');
 check(/iplayer\/search\?q=/.test(await page.getAttribute('#panel .primaryProvider', 'href')), 'BBC programmes go to iPlayer search');
 await page.click('#nxSettings');
 check(/Sky channels working/.test(await page.textContent('#skyStatus')), 'Settings: ' + await page.textContent('#skyStatus'));

@@ -153,8 +153,8 @@
     a.href = s.url; a.dataset.title = title; a.rel = 'noopener noreferrer'; if (!window.GranaryApp) a.target = '_blank';
     a.title = s.sure ? 'Opens the programme page' : s.copy ? 'Opens ' + shortService(service) + ' and copies “' + title + '” so you can paste it into its search' : 'Searches ' + service + ' for “' + title + '”';
     if (s.copy) a.addEventListener('click', () => {
-      try { navigator.clipboard.writeText(title).then(() => toast('“' + title + '” copied – paste it into ' + shortService(service) + '’s search'), () => toast('Search ' + shortService(service) + ' for “' + title + '”')); }
-      catch (e) { toast('Search ' + shortService(service) + ' for “' + title + '”'); }
+      try { navigator.clipboard.writeText(title).then(() => toast('“' + title + '” copied – paste it into ' + shortService(service) + '’s search', null, null, 'copy'), () => toast('Search ' + shortService(service) + ' for “' + title + '”', null, null, 'copy')); }
+      catch (e) { toast('Search ' + shortService(service) + ' for “' + title + '”', null, null, 'copy'); }
     });
     if (onUse) a.addEventListener('click', onUse);
     return a;
@@ -170,6 +170,7 @@
   function closeBtn() { const b = h('button', 'sheetClose', '✕'); b.setAttribute('aria-label', 'Close'); b.onclick = () => $('panel').classList.remove('open'); return b; }
 
   function showGuidePanel({ p, ch }) {
+    if (NX.toastKind === 'copy' && NX.shown !== NX.sel) hideToast();
     const panel = $('panel'), now = new Date(), onNow = p.start <= now && p.end > now;
     selectedProgramme = { p, ch }; NX.shown = NX.sel;
     const lib = inLibrary(p.title), linked = isLinked(p.title);
@@ -339,8 +340,8 @@
       if (e2) toast('Could not undo: ' + e2.message); else { NX.libSel = g.key; await openLibrary(); toast('Put back ' + g.title); }
     });
   }
-  function toast(text, action, fn) {
-    const el = $('toast'); el.innerHTML = ''; el.append(h('span', '', text));
+  function toast(text, action, fn, kind) {
+    const el = $('toast'); NX.toastKind = kind || ''; el.innerHTML = ''; el.append(h('span', '', text));
     if (action) { const b = h('button', '', action); b.onclick = () => { hideToast(); fn(); }; el.append(b); }
     el.classList.add('show'); clearTimeout(undoTimer); undoTimer = setTimeout(hideToast, action ? 8000 : 3000);
     if (action && (NX.tv || document.documentElement.classList.contains('remoteNav'))) el.querySelector('button').focus();
@@ -353,6 +354,7 @@
     const n = norm(name); return channels.find(c => norm(c.display) === n || norm(c.sourceName) === n) || { display: name, sourceName: name };
   }
   function showLibraryPanel() {
+    if (NX.toastKind === 'copy') hideToast();
     const panel = $('panel'), g = NX.groups.find(x => x.key === NX.libSel);
     if (!g) { panel.innerHTML = ''; return; }
     const text = h('div', 'infoText');
@@ -463,6 +465,7 @@
     renderDays();
     tickClock(); setInterval(tickClock, 15000); loadWeather(); setInterval(loadWeather, 15 * 60 * 1000);
     if (location.hash === '#library') showTab('library');
+    document.addEventListener('visibilitychange', () => { if (!document.hidden && NX.toastKind === 'copy') setTimeout(hideToast, 1500); });
     let lastPhone = NX.phone();
     addEventListener('resize', () => { const p = NX.phone(); if (p !== lastPhone) { lastPhone = p; setWindow(startHour); render(); } else sizeRows($('nxGrid')); });
     // On a TV, start with the selected programme focused.
