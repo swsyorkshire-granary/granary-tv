@@ -141,12 +141,21 @@
     const known = (GRANARY_KNOWN_PROGRAMME_URLS[String(title).trim().toLowerCase()] || {})[service];
     if (verified) return { url: verified.candidate_url, label: (verified.verification_status === 'playback_confirmed' ? 'Play on ' : 'Open in ') + service, sure: true };
     if (known) return { url: known, label: 'Open in ' + service, sure: true };
-    return { url: inApp() ? (GRANARY_SERVICE_URLS[service] || granaryProviderSearchUrl(service, title)) : granaryProviderSearchUrl(service, title), label: 'Search ' + service, sure: false };
+    // No direct link: services with a real search page go there; the rest open the service and copy the title.
+    const search = SEARCH_PAGES[service];
+    if (search && !inApp()) return { url: search(title), label: 'Search ' + service, sure: false, searchPage: true };
+    return { url: GRANARY_SERVICE_URLS[service] || granaryProviderSearchUrl(service, title), label: 'Open ' + shortService(service), sure: false, copy: !inApp() };
   }
+  const SEARCH_PAGES = { 'BBC iPlayer': t => 'https://www.bbc.co.uk/iplayer/search?q=' + encodeURIComponent(t) };
+  const shortService = s => s === 'Sky / NOW' ? 'NOW' : s;
   function providerBtn(title, service, cls, onUse) {
     const s = serviceLink(title, service), a = h('a', cls + ' primaryProvider', s.label);
     a.href = s.url; a.dataset.title = title; a.rel = 'noopener noreferrer'; if (!window.GranaryApp) a.target = '_blank';
-    a.title = s.sure ? 'Opens the programme page' : 'Searches ' + service + ' for “' + title + '”';
+    a.title = s.sure ? 'Opens the programme page' : s.copy ? 'Opens ' + shortService(service) + ' and copies “' + title + '” so you can paste it into its search' : 'Searches ' + service + ' for “' + title + '”';
+    if (s.copy) a.addEventListener('click', () => {
+      try { navigator.clipboard.writeText(title).then(() => toast('“' + title + '” copied – paste it into ' + shortService(service) + '’s search'), () => toast('Search ' + shortService(service) + ' for “' + title + '”')); }
+      catch (e) { toast('Search ' + shortService(service) + ' for “' + title + '”'); }
+    });
     if (onUse) a.addEventListener('click', onUse);
     return a;
   }
