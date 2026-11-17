@@ -23,6 +23,7 @@ async function getJSON(url){
   const r=await fetch(url,{headers:{Accept:'application/json'}});
   if(r.ok)return r.json();
   if((r.status===429||r.status===503)&&attempt<4){const ra=Number(r.headers.get('Retry-After'));await sleep(ra>0&&ra<30?ra*1000:1500*Math.pow(2,attempt));continue}
+  if(r.headers.get('X-Granary-Error'))throw Error(r.headers.get('X-Granary-Error'));
   throw Error(r.status===429?'listings service busy (too many requests)':'HTTP '+r.status+' from listings feed');
  }
 }

@@ -1,0 +1,44 @@
+{
+  "_help": "Sky channel listings for Granary TV. If Sky listings stop working, see FIXING-SKY.md in the project. Usually only the two web addresses below need changing.",
+  "servicesUrl": "https://awk.epgsky.com/hawk/linear/services/4101/1",
+  "scheduleUrl": "https://awk.epgsky.com/hawk/linear/schedule/{date}/{sid}",
+  "maxChannelNumber": 199,
+  "channels": [
+    {
+      "name": "Sky Atlantic",
+      "sid": "4053"
+    },
+    {
+      "name": "Sky Witness",
+      "sid": "4066"
+    },
+    {
+      "name": "Sky Comedy",
+      "sid": "1143"
+    },
+    {
+      "name": "Sky Crime",
+      "sid": "1212"
+    },
+    {
+      "name": "Sky Arts",
+      "sid": "4063"
+    },
+    {
+      "name": "Sky History",
+      "sid": "4086"
+    },
+    {
+      "name": "Sky Nature",
+      "sid": "1165"
+    },
+    {
+      "name": "Sky Sci-Fi",
+      "sid": "4074"
+    },
+    {
+      "name": "Sky Mix",
+      "sid": "1831"
+    }
+  ]
+}

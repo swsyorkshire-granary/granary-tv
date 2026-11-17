@@ -28,7 +28,7 @@
   // ── Channel badges ──────────────────────────────────────────
   const BADGES = [['bbcone', 'BBC1', '#1f2937'], ['bbctwo', 'BBC2', '#475569'], ['bbcthree', 'BBC3', '#334155'], ['bbcfour', 'BBC4', '#3f3f46'], ['bbcnews', 'NEWS', '#991b1b'],
     ['itv1', 'ITV1', '#0f766e'], ['itv2', 'ITV2', '#0d9488'], ['itv3', 'ITV3', '#115e59'], ['itv4', 'ITV4', '#134e4a'], ['channel4', 'C4', '#7c3aed'], ['e4', 'E4', '#6d28d9'],
-    ['more4', 'M4', '#5b21b6'], ['film4', 'F4', '#4c1d95'], ['channel5', '5', '#be123c'], ['5star', '5★', '#9f1239'], ['sky', 'SKY', '#1d4ed8'], ['dave', 'DAVE', '#a16207']];
+    ['more4', 'M4', '#5b21b6'], ['film4', 'F4', '#4c1d95'], ['channel5', '5', '#be123c'], ['5star', '5★', '#9f1239'], ['skyatlantic', 'ATL', '#0c4a6e'], ['skywitness', 'WIT', '#9d174d'], ['skycomedy', 'COM', '#b45309'], ['skycrime', 'CRM', '#7f1d1d'], ['skyarts', 'ARTS', '#6b21a8'], ['skyhistory', 'HIST', '#78350f'], ['skynature', 'NAT', '#166534'], ['skyscifi', 'SCI', '#1e1b4b'], ['skymix', 'MIX', '#0369a1'], ['skyshowcase', 'SHOW', '#1d4ed8'], ['skymax', 'MAX', '#1e40af'], ['skydocumentaries', 'DOCS', '#115e59'], ['sky', 'SKY', '#1d4ed8'], ['dave', 'DAVE', '#a16207']];
   const PALETTE = ['#334155', '#0e7490', '#7c2d12', '#365314', '#701a75', '#1e3a8a', '#713f12'];
   function badgeFor(name) {
     const n = norm(name);
@@ -426,13 +426,23 @@
     }
   }
   NX.tempColour = tempColour;
+  function showSkyStatus() {
+    const el = $('skyStatus'); if (!el) return;
+    const s = window.granarySkyStatus && window.granarySkyStatus();
+    const hasSky = channels.some(c => String(c.id).startsWith('sky:'));
+    if (!hasSky) { el.textContent = 'Sky channels: none added (add them in Add or remove channels)'; return; }
+    if (!s) { el.textContent = 'Sky channels: not checked yet'; return; }
+    const when = new Date(s.at).toLocaleString('en-GB', { weekday: 'short', hour: '2-digit', minute: '2-digit' });
+    el.textContent = s.ok ? '✓ Sky channels working · updated ' + when : '⚠ Sky listings not loading (' + s.msg + ') · last tried ' + when + '. Showing saved listings – ask Claude to “fix Sky listings”.';
+    el.classList.toggle('warn', !s.ok);
+  }
 
   // ── Wiring ──────────────────────────────────────────────────
   document.addEventListener('DOMContentLoaded', () => {
     $('tabGuide').onclick = () => showTab('guide');
     $('tabLibrary').onclick = () => showTab('library');
     if (NX.tv) $('classicLink').href = 'classic-tv.html';
-    $('nxSettings').onclick = () => $('settingsPanel').classList.add('open');
+    $('nxSettings').onclick = () => { showSkyStatus(); $('settingsPanel').classList.add('open'); };
     document.querySelectorAll('.cloudPanel .close').forEach(b => { if (!b.onclick) b.onclick = () => b.closest('.cloudPanel').classList.remove('open'); });
     $('settingsPanel').addEventListener('click', e => { if (e.target.id === 'manage' || e.target.id === 'servicesBtn' || e.target.id === 'signInBtn') $('settingsPanel').classList.remove('open'); if (e.target.id === 'refresh') { $('settingsPanel').classList.remove('open'); } }, true);
     document.querySelectorAll('.cloudPanel').forEach(p => p.addEventListener('click', e => { if (e.target === p) { p.classList.remove('open'); if (p.id === 'tileMenu') closeTileMenu(); } }));

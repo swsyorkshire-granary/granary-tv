@@ -110,6 +110,7 @@ html.remoteNav .tile:focus{outline-color:var(--acc)!important}
 #moreBody .danger{color:#b42318}
 .setRow{display:flex;align-items:center;justify-content:space-between;padding:.6rem 1rem;border-radius:.8rem;background:var(--tile);font-weight:600}
 .setRow select{border:0;background:#fff;border-radius:.5rem;padding:.3rem .5rem}
+.setRow.warn{background:#fff7e6;color:#8a5a14;display:block}
 .cloudMessage{margin-top:.6rem;color:var(--soft);font-size:.87rem}
 .servicesChoices{display:grid;grid-template-columns:1fr 1fr;gap:.5rem;margin:1rem 0}
 .servicesChoices label{background:var(--tile)!important;border-radius:.7rem!important}
