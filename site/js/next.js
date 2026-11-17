@@ -41,13 +41,19 @@
   function badgeEl(name) { const b = badgeFor(name), e = h('span', 'badge', b.label); e.style.background = b.col; e.title = name; return e; }
 
   // ── Days ────────────────────────────────────────────────────
+  function changeWeek(delta) {
+    weekOffset = Math.min(0, weekOffset + delta); selected = weekOffset < 0 ? 6 : 0; NX.sel = null;
+    renderDays(); loadListings();
+  }
   renderDays = function () {
     const el = $('nxDays'); el.innerHTML = '';
+    const back = h('button', 'day wk', '‹'); back.title = 'Previous week'; back.setAttribute('aria-label', 'Previous week'); back.onclick = () => changeWeek(-1); el.append(back);
     for (let i = 0; i < 7; i++) {
-      const d = dateFor(i), b = h('button', 'day' + (i === selected ? ' on' : ''), i === 0 ? 'Today' : d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric' }));
+      const d = dateFor(i), b = h('button', 'day' + (i === selected ? ' on' : ''), weekOffset === 0 && i === 0 ? 'Today' : d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric' }));
       b.onclick = () => { selected = i; NX.sel = null; renderDays(); render(); };
       el.append(b);
     }
+    if (weekOffset < 0) { const fwd = h('button', 'day wk', weekOffset === -1 ? 'This week ›' : 'Next week ›'); fwd.onclick = () => changeWeek(1); el.append(fwd); }
   };
 
   // ── Guide grid ──────────────────────────────────────────────
@@ -387,7 +393,39 @@
   };
   // Series links: refresh the library after each background check.
   const baseSeries = granarySeriesBackground;
-  granarySeriesBackground = async function () { await baseSeries(); if (currentUser && NX.libLoaded) openLibrary(); };
+  granarySeriesBackground = async function () { if (weekOffset !== 0) return;   // only this week's listings say what's coming up
+    await baseSeries(); if (currentUser && NX.libLoaded) openLibrary(); };
+
+  // ── Clock and weather dials ─────────────────────────────────
+  function dial(el, frac, colour, text, title) {
+    el.style.setProperty('--p', Math.max(0, Math.min(1, frac))); el.style.setProperty('--c', colour);
+    el.firstElementChild.textContent = text; if (title) el.title = title;
+  }
+  function timeColour(h) { return h >= 5 && h < 9 ? '#f59e0b' : h >= 9 && h < 17 ? '#0ea5e9' : h >= 17 && h < 21 ? '#f97316' : '#6366f1'; }
+  function tickClock() {
+    const d = new Date(), m = d.getMinutes() + d.getSeconds() / 60;
+    dial($('nxClock'), m / 60, timeColour(d.getHours()), String(d.getHours()), fmtT(d) + ' – ' + d.getMinutes() + ' minutes past');
+  }
+  const TEMP_STOPS = [[-5, [109, 40, 217]], [0, [37, 99, 235]], [5, [14, 165, 233]], [10, [16, 185, 129]], [15, [234, 179, 8]], [20, [249, 115, 22]], [25, [220, 38, 38]]];
+  function tempColour(t) {
+    if (t <= TEMP_STOPS[0][0]) return 'rgb(' + TEMP_STOPS[0][1] + ')';
+    for (let i = 1; i < TEMP_STOPS.length; i++) { const [b, cb] = TEMP_STOPS[i], [a, ca] = TEMP_STOPS[i - 1]; if (t <= b) { const k = (t - a) / (b - a); return 'rgb(' + ca.map((v, j) => Math.round(v + (cb[j] - v) * k)) + ')'; } }
+    return 'rgb(' + TEMP_STOPS[TEMP_STOPS.length - 1][1] + ')';
+  }
+  const WX = { 0: 'Clear', 1: 'Mainly clear', 2: 'Partly cloudy', 3: 'Cloudy', 45: 'Fog', 48: 'Fog', 51: 'Light drizzle', 53: 'Drizzle', 55: 'Heavy drizzle', 61: 'Light rain', 63: 'Rain', 65: 'Heavy rain', 66: 'Freezing rain', 67: 'Freezing rain', 71: 'Light snow', 73: 'Snow', 75: 'Heavy snow', 77: 'Snow grains', 80: 'Showers', 81: 'Showers', 82: 'Heavy showers', 85: 'Snow showers', 86: 'Snow showers', 95: 'Thunderstorm', 96: 'Thunderstorm', 99: 'Thunderstorm' };
+  async function loadWeather() {
+    try {
+      const r = await fetch('https://api.open-meteo.com/v1/forecast?latitude=53.96&longitude=-1.08&current=temperature_2m,weather_code&daily=temperature_2m_max,temperature_2m_min&timezone=Europe%2FLondon&forecast_days=1');
+      if (!r.ok) throw Error(r.status);
+      const j = await r.json(), t = j.current.temperature_2m, hi = j.daily.temperature_2m_max[0], lo = j.daily.temperature_2m_min[0];
+      // the whole ring takes the temperature's colour: purple/blue when cold, green when mild, orange/red when warm
+      dial($('nxTemp'), 1, tempColour(t), Math.round(t) + '°', 'York: ' + Math.round(t) + '°C, ' + (WX[j.current.weather_code] || '') + ' · today ' + Math.round(lo) + '° to ' + Math.round(hi) + '°');
+      try { localStorage.setItem('granary-weather', JSON.stringify({ t, code: j.current.weather_code, hi, lo, at: Date.now() })); } catch (e) {}
+    } catch (e) {
+      try { const c = JSON.parse(localStorage.getItem('granary-weather') || 'null'); if (c) dial($('nxTemp'), 1, tempColour(c.t), Math.round(c.t) + '°', 'York (saved): ' + Math.round(c.t) + '°C'); } catch (e2) {}
+    }
+  }
+  NX.tempColour = tempColour;
 
   // ── Wiring ──────────────────────────────────────────────────
   document.addEventListener('DOMContentLoaded', () => {
@@ -404,6 +442,7 @@
     const hs = $('nxHours'); for (let hr = 6; hr <= 21; hr++) hs.add(new Option(pad(hr) + ':00', hr)); hs.value = String(defaultStart());
     hs.onchange = () => { localStorage.setItem(WIN_KEY, hs.value); setWindow(+hs.value); render(); };
     renderDays();
+    tickClock(); setInterval(tickClock, 15000); loadWeather(); setInterval(loadWeather, 15 * 60 * 1000);
     if (location.hash === '#library') showTab('library');
     let lastPhone = NX.phone();
     addEventListener('resize', () => { const p = NX.phone(); if (p !== lastPhone) { lastPhone = p; setWindow(startHour); render(); } else sizeRows($('nxGrid')); });

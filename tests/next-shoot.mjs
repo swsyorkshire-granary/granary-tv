@@ -19,6 +19,7 @@ for (const [name, url, w, h, s, tab] of [['ipad-guide', 'next.html', 1180, 820, 
   const page = await ctx.newPage(); page.on('pageerror', e => errs.push(name + ': ' + e)); page.on('console', m => { if (m.type() === 'error') errs.push(name + ' console: ' + m.text()); });
   await page.clock.install({ time: new Date(+t0 + 20 * 36e5 + 40 * 6e4) });
   await page.route('https://cdn.jsdelivr.net/**', r => r.fulfill({ contentType: 'text/javascript', body: stub }));
+  await page.route('https://api.open-meteo.com/**', r => r.fulfill({ contentType: 'application/json', headers: { 'Access-Control-Allow-Origin': '*' }, body: JSON.stringify({ current: { temperature_2m: 7.4, weather_code: 3 }, daily: { temperature_2m_max: [9], temperature_2m_min: [3] } }) }));
   await page.route('https://api.tvmaze.com/**', r => r.fulfill({ contentType: 'application/json', body: '[]' }));
   await page.route('**/functions/v1/**', r => r.fulfill({ contentType: 'application/json', headers: { 'Access-Control-Allow-Origin': '*' }, body: '{"best":{}}' }));
   await page.route('https://www.ontvnow.co.uk/**', r => { const u = new URL(r.request().url()); if (u.pathname.endsWith('/channels')) return r.fulfill({ contentType: 'application/json', body: JSON.stringify({ data: chans.map(([id, name]) => ({ id, name })) }) });
