@@ -49,3 +49,10 @@ Sky doesn't officially support this, so it can stop working if Sky changes its w
   - The Fire Stick launches `com.bskyb.nowtv.beta` with the `nowtv://` link, falling back to the nowtv.com page.
   - Where to find these in NOW's website code: the deeplink bundle, `mobileDevices.gb.deepLinkBaseUrl` in `window.__CONFIGURATION__`.
 - **NOW's private watchlist service can't be used directly:** it needs your NOW sign-in plus a signature for every request (`x-sky-signature`). The deep link avoids that.
+
+## Past days (saved Sky listings)
+- **Why:** Sky's guide only goes back to about the previous evening.
+- **What gets saved:** whenever a signed-in device loads Sky listings, it saves each day (from yesterday onwards) into the Supabase table `sky_listings_archive`, with `channel_key` + `day` as the key and the programmes as `items`. Each device does this at most every 6 hours per channel and day.
+- **How it's read back:** going back in dates, any Sky day that Sky returns empty is filled from that table.
+- **Permissions:** anyone can read the table. Signed-in users can only add or refresh days from two days ago onwards, so old history can't be rewritten.
+- **When it started:** saving began on 17 Nov 2026. Earlier days show "No saved Sky listings for this day".

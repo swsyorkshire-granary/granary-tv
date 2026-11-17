@@ -73,6 +73,8 @@ await page.waitForTimeout(300); check(!(await page.evaluate(() => document.getEl
 check(/iplayer\/search\?q=/.test(await page.getAttribute('#panel .primaryProvider', 'href')), 'BBC programmes go to iPlayer search');
 await page.locator('#nxDays .wk').first().click(); await page.waitForFunction(() => /refreshed|saved|unavailable/i.test(document.getElementById('status').textContent)); await page.waitForTimeout(400);
 await page.locator('#nxDays .day:not(.wk)').nth(2).click(); await page.waitForTimeout(300);
+const ups = await page.evaluate(() => window.__ops.filter(o => o.t === 'sky_listings_archive' && o.op === 'upsert').flatMap(o => [].concat(o.row)).map(r => r.channel_key + ' ' + r.day + ' ' + r.items.length));
+check(ups.some(u => /^skyatlantic /.test(u)) && ups.some(u => /^skywitness /.test(u)), 'Sky listings saved to the shared archive: ' + ups.slice(0, 3).join(', '));
 check(await page.locator('.rowNote').count() === 2 && !/unavailable/i.test(await page.textContent('#status')), 'previous week: Sky rows say Sky keeps no past days, no error: ' + await page.textContent('#status'));
 await page.locator('#nxDays .wk', { hasText: 'This week' }).click(); await page.waitForTimeout(800);
 await page.locator('.tile', { hasText: 'Atlantic Drama 21' }).click(); await page.waitForTimeout(300);
@@ -96,6 +98,16 @@ await page.context().close();
 skyMode = 'renumbered';
 page = await open('index.html', { width: 1180, height: 820 }, preset);
 check(await page.locator('.tile', { hasText: 'Renumbered Show 20' }).count() === 1, 'Sky renumbers a channel: fixed automatically');
+check(page.errs.length === 0, 'no page errors ' + page.errs.join(' | '));
+// Past Sky days come from the saved copies
+skyMode = 'ok';
+page = await open('index.html', { width: 1180, height: 820 }, preset);
+const past = new Date(); past.setHours(0, 0, 0, 0); past.setDate(past.getDate() - 5);
+const pastIso = past.getFullYear() + '-' + String(past.getMonth() + 1).padStart(2, '0') + '-' + String(past.getDate()).padStart(2, '0');
+await page.evaluate(([iso, t]) => { window.__db.sky_listings_archive = [{ day: iso, items: [{ title: 'Archived Atlantic Show', start: new Date(t + 20 * 36e5).toISOString(), end: new Date(t + 21 * 36e5).toISOString(), description: 'saved' }] }]; }, [pastIso, past.getTime()]);
+await page.locator('#nxDays .wk').first().click(); await page.waitForFunction(() => /refreshed|saved|unavailable/i.test(document.getElementById('status').textContent)); await page.waitForTimeout(300);
+await page.evaluate(iso => { const want = new Date(iso + 'T12:00').toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric' }); [...document.querySelectorAll('#nxDays .day')].find(b => b.textContent === want).click(); }, pastIso); await page.waitForTimeout(400);
+check(await page.locator('.tile', { hasText: 'Archived Atlantic Show' }).count() >= 1, 'a past Sky day shows the saved listings');
 check(page.errs.length === 0, 'no page errors ' + page.errs.join(' | '));
 // Fire Stick app: NOW buttons launch the NOW app with NOW's own deep link
 skyMode = 'ok';

@@ -85,6 +85,29 @@
       description: e.sy || '', genre: ''
     })).filter(p => p.title);
   }
+  // Saved copies in Supabase (table sky_listings_archive), so past days stay available after Sky drops them.
+  const isoDay = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  const db = () => (typeof granaryClient !== 'undefined' ? granaryClient : null);
+  async function readArchive(key, days) {
+    const c = db(); if (!c || !days.length) return {};
+    try {
+      const { data, error } = await c.from('sky_listings_archive').select('day,items').eq('channel_key', key).in('day', days.map(isoDay));
+      if (error) throw error;
+      return Object.fromEntries((data || []).map(r => [r.day, r.items || []]));
+    } catch (e) { console.warn('Granary TV: Sky archive read failed –', e.message || e); return {}; }
+  }
+  async function saveArchive(key, byDay) {
+    const c = db(); if (!c || typeof currentUser === 'undefined' || !currentUser) return;   // saving needs a signed-in device
+    const keep = new Date(); keep.setHours(0, 0, 0, 0); keep.setDate(keep.getDate() - 1);
+    const rows = Object.entries(byDay).filter(([day, items]) => items.length && new Date(day + 'T12:00') >= keep && !savedToday(key, day))
+      .map(([day, items]) => ({ channel_key: key, day, items, updated_at: new Date().toISOString() }));
+    if (!rows.length) return;
+    try { const { error } = await c.from('sky_listings_archive').upsert(rows, { onConflict: 'channel_key,day' }); if (error) throw error; rows.forEach(r => markSaved(key, r.day)); }
+    catch (e) { console.warn('Granary TV: Sky archive save failed –', e.message || e); }
+  }
+  // each device saves a given channel/day at most every 6 hours
+  function savedToday(key, day) { try { const m = JSON.parse(localStorage.getItem('granary-sky-saved') || '{}'); return m[key + day] && Date.now() - m[key + day] < 6 * 36e5; } catch (e) { return false; } }
+  function markSaved(key, day) { try { const m = JSON.parse(localStorage.getItem('granary-sky-saved') || '{}'); m[key + day] = Date.now(); for (const k in m) if (Date.now() - m[k] > 3 * 864e5) delete m[k]; localStorage.setItem('granary-sky-saved', JSON.stringify(m)); } catch (e) {} }
   const ymd = d => d.getFullYear() + String(d.getMonth() + 1).padStart(2, '0') + String(d.getDate()).padStart(2, '0');
 
   async function skyListings(key, from, to) {
@@ -94,10 +117,11 @@
     if (!ch) throw Error('Sky no longer lists this channel');
     const days = []; const d = new Date(from); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() - 1);
     while (d <= to) { days.push(new Date(d)); d.setDate(d.getDate() + 1); }
+    const byDay = {};
     const fetchDay = async day => {
       const r = await realFetch(cfg.scheduleUrl.replace('{date}', ymd(day)).replace('{sid}', ch.sid));
       if (!r.ok) throw Error('Sky schedule ' + r.status);
-      return readSchedule(await r.json());
+      const items = readSchedule(await r.json()); byDay[isoDay(day)] = items; return items;
     };
     let results = await Promise.allSettled(days.map(fetchDay));
     let got = results.filter(x => x.status === 'fulfilled').flatMap(x => x.value);
@@ -105,6 +129,11 @@
       const fresh = (await skyChannels(true)).find(c => c.key === key);
       if (fresh && fresh.sid !== ch.sid) { ch = fresh; results = await Promise.allSettled(days.map(fetchDay)); got = results.filter(x => x.status === 'fulfilled').flatMap(x => x.value); }
     }
+    // Days Sky no longer lists (the past): fill them from the saved copies.
+    const today0 = new Date(); today0.setHours(0, 0, 0, 0);
+    const pastEmpty = days.filter(d => d < today0 && !(byDay[isoDay(d)] || []).length);
+    if (pastEmpty.length) { const saved = await readArchive(key, pastEmpty); Object.values(saved).forEach(items => got.push(...items)); }
+    saveArchive(key, byDay);
     const failed = results.filter(x => x.status === 'rejected');
     // Sky's guide only goes back to about yesterday evening: an empty past week is normal, not a fault.
     if (!got.length && !failed.length && to.getTime() < Date.now() + 864e5) return [];
