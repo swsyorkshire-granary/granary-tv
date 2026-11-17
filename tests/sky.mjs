@@ -30,6 +30,8 @@ async function open(url, vp, presetChannels) {
     const [, , , , date, sid] = u.pathname.split('/');
     if (skyMode === 'renumbered' && sid === '4053') return r.fulfill({ status: 404, body: '' });
     const y = +date.slice(0, 4), m = +date.slice(4, 6) - 1, d = +date.slice(6, 8), base = new Date(y, m, d).getTime() / 1000, ev = [];
+    const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
+    if (skyMode !== 'renumbered' && base * 1000 < todayStart.getTime() - 864e5) { r.fulfill({ contentType: 'application/json', headers: { 'Access-Control-Allow-Origin': '*' }, body: JSON.stringify({ date, schedule: [{ sid, events: [] }] }) }); return; }
     for (let h = 0; h < 24; h++) ev.push({ t: (sid === '4066' ? 'Witness Show ' : sid === '9999' ? 'Renumbered Show ' : 'Atlantic Drama ') + h, st: base + h * 3600, d: 3600, sy: 'Sky synopsis ' + h });
     r.fulfill({ contentType: 'application/json', headers: { 'Access-Control-Allow-Origin': '*' }, body: JSON.stringify({ date, schedule: [{ sid, events: ev }] }) }); });
   await page.clock.install({ time: new Date(+t0 + 20 * 36e5 + 40 * 6e4) });
@@ -69,8 +71,13 @@ check(/copied – paste it into NOW/.test(await page.textContent('#toast')), 'ta
 await page.locator('.tile', { hasText: 'Show 1-21' }).first().click();
 await page.waitForTimeout(300); check(!(await page.evaluate(() => document.getElementById('toast').classList.contains('show'))), 'picking another programme clears the NOW message');
 check(/iplayer\/search\?q=/.test(await page.getAttribute('#panel .primaryProvider', 'href')), 'BBC programmes go to iPlayer search');
+await page.locator('#nxDays .wk').first().click(); await page.waitForFunction(() => /refreshed|saved|unavailable/i.test(document.getElementById('status').textContent)); await page.waitForTimeout(400);
+await page.locator('#nxDays .day:not(.wk)').nth(2).click(); await page.waitForTimeout(300);
+check(await page.locator('.rowNote').count() === 2 && !/unavailable/i.test(await page.textContent('#status')), 'previous week: Sky rows say Sky keeps no past days, no error: ' + await page.textContent('#status'));
+await page.locator('#nxDays .wk', { hasText: 'This week' }).click(); await page.waitForTimeout(800);
+await page.locator('.tile', { hasText: 'Atlantic Drama 21' }).click(); await page.waitForTimeout(300);
 await page.click('#nxSettings');
-check(/Sky channels working/.test(await page.textContent('#skyStatus')), 'Settings: ' + await page.textContent('#skyStatus'));
+check(/Sky channels working/.test(await page.textContent('#skyStatus')), 'Settings still says working: ' + await page.textContent('#skyStatus'));
 await page.locator('#settingsPanel .close').click();
 await page.click('#nxSettings'); await page.click('#manage');
 const opts = await page.$$eval('#addSelect option', o => o.map(x => x.textContent));

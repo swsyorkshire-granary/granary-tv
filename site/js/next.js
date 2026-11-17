@@ -91,6 +91,8 @@
         t.onfocus = () => { if (NX.sel !== k) selectTile(k, false); };
         NX.tiles.set(k, { p, ch, el: t }); tl.append(t); count++;
       });
+      if (!tl.querySelector('.tile') && String(ch.id).startsWith('sky:') && dateFor(selected) < new Date(new Date().setHours(0, 0, 0, 0)))
+        tl.append(h('div', 'rowNote', 'Sky’s guide doesn’t keep past days'));
       if (isToday) { const m = now.getHours() * 60 + now.getMinutes(); if (m >= from && m < to) { const nl = h('i', 'nowl'); nl.style.left = ((m - from) / span * 100) + '%'; tl.append(nl); } }
       g.append(row);
     });

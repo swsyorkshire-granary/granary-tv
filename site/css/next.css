@@ -71,6 +71,7 @@ body.scrolled .info .tag{font-size:.65rem}
 .tile.lk{background:#eef2ff;color:#4338ca}
 .tile.past{color:var(--faint)}
 .tile.sel{background:var(--ink);color:#fff}
+.rowNote{position:absolute;inset:0;display:flex;align-items:center;padding:0 .9rem;color:var(--faint);font-size:.85rem;font-style:italic;border:1px dashed var(--line);border-radius:.65rem}
 .nowl{position:absolute;top:-.3rem;bottom:-.3rem;width:2px;background:var(--acc);border-radius:2px;pointer-events:none;z-index:2}
 .gridBar{display:flex;align-items:center;gap:.4rem;margin:.8rem .2rem 0;color:var(--soft);font-size:.87rem;font-weight:600}
 .gridBar button{padding:.45rem .8rem;border-radius:999px;font-weight:700}

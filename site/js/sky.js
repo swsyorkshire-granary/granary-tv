@@ -106,6 +106,8 @@
       if (fresh && fresh.sid !== ch.sid) { ch = fresh; results = await Promise.allSettled(days.map(fetchDay)); got = results.filter(x => x.status === 'fulfilled').flatMap(x => x.value); }
     }
     const failed = results.filter(x => x.status === 'rejected');
+    // Sky's guide only goes back to about yesterday evening: an empty past week is normal, not a fault.
+    if (!got.length && !failed.length && to.getTime() < Date.now() + 864e5) return [];
     if (!got.length) throw Error(failed.length ? failed[0].reason.message : 'Sky returned no programmes');
     const seen = new Set();
     return got.filter(p => new Date(p.end) > from && new Date(p.start) < to && !seen.has(p.start) && seen.add(p.start)).sort((a, b) => a.start.localeCompare(b.start));
@@ -133,7 +135,7 @@
       if (Number(u.searchParams.get('page') || 1) > 1) return json({ data: [], meta: { last_page: 1 } });
       try {
         const data = await skyListings(id.slice(4), new Date(u.searchParams.get('from')), new Date(u.searchParams.get('to')));
-        setStatus(true);
+        if (data.length || new Date(u.searchParams.get('to')) > new Date()) setStatus(true);
         return json({ data, meta: { last_page: 1 } });
       } catch (e) {
         setStatus(false, e.message);
