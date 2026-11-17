@@ -148,13 +148,34 @@
     if (search && !inApp()) return { url: search(title), label: 'Search ' + service, sure: false, searchPage: true };
     return { url: GRANARY_SERVICE_URLS[service] || granaryProviderSearchUrl(service, title), label: 'Open ' + shortService(service), sure: false, copy: !inApp() };
   }
+  // NOW: look up the programme's own NOW page (via the find-links helper) and point the button straight at it.
+  const NOW_CACHE_KEY = 'granary-now-pages';
+  function nowCache() { try { return JSON.parse(localStorage.getItem(NOW_CACHE_KEY) || '{}'); } catch (e) { return {}; } }
+  const nowPending = new Map();
+  function nowPage(title) {
+    const k = granaryNormaliseTitle(title.replace(/^\s*(new|live)\s*:\s*/i, '')), c = nowCache()[k];
+    if (c && Date.now() - c.at < (c.url ? 14 : 2) * 864e5) return Promise.resolve(c.url);
+    if (nowPending.has(k)) return nowPending.get(k);
+    const p = fetch(GRANARY_FIND_LINKS_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title, services: 'Sky / NOW' }) })
+      .then(r => r.ok ? r.json() : null).then(j => {
+        const url = j && j.best && j.best['Sky / NOW'] ? j.best['Sky / NOW'].url : null;
+        try { const m = nowCache(); m[k] = { url, at: Date.now() }; localStorage.setItem(NOW_CACHE_KEY, JSON.stringify(m)); } catch (e) {}
+        return url;
+      }).catch(() => null).finally(() => nowPending.delete(k));
+    nowPending.set(k, p); return p;
+  }
+  function upgradeToNowPage(a, title) {
+    nowPage(title).then(url => { if (!url || !a.isConnected) return; a.href = url; a.dataset.found = '1'; if (!/check anyway/.test(a.textContent)) a.textContent = 'Open in NOW'; a.title = 'Opens “' + title + '” on NOW'; });
+  }
   const SEARCH_PAGES = { 'BBC iPlayer': t => 'https://www.bbc.co.uk/iplayer/search?q=' + encodeURIComponent(t) };
   const shortService = s => s === 'Sky / NOW' ? 'NOW' : s;
   function providerBtn(title, service, cls, onUse) {
     const s = serviceLink(title, service), a = h('a', cls + ' primaryProvider', s.label);
     a.href = s.url; a.dataset.title = title; a.rel = 'noopener noreferrer'; if (!window.GranaryApp) a.target = '_blank';
     a.title = s.sure ? 'Opens the programme page' : s.copy ? 'Opens ' + shortService(service) + ' and copies “' + title + '” so you can paste it into its search' : 'Searches ' + service + ' for “' + title + '”';
+    if (!s.sure && service === 'Sky / NOW') upgradeToNowPage(a, title);
     if (s.copy) a.addEventListener('click', () => {
+      if (a.dataset.found) return;
       try { navigator.clipboard.writeText(title).then(() => toast('“' + title + '” copied – paste it into ' + shortService(service) + '’s search', null, null, 'copy'), () => toast('Search ' + shortService(service) + ' for “' + title + '”', null, null, 'copy')); }
       catch (e) { toast('Search ' + shortService(service) + ' for “' + title + '”', null, null, 'copy'); }
     });

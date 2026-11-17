@@ -7,8 +7,9 @@ const MATCH = 0.95;
 
 const norm = (s: string) => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/&/g, 'and').replace(/[^a-z0-9]/g, '');
 const slug = (s: string) => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/&/g, 'and').replace(/['’]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+const cleanTitle = (s: string) => String(s || '').replace(/^\s*(new|live)\s*:\s*/i, '').trim();
 const score = (want: string, got: string) => {
-  const a = norm(want), b = norm(got); if (!a || !b) return 0;
+  const a = norm(cleanTitle(want)), b = norm(got); if (!a || !b) return 0;
   if (a === b) return 1;
   if (b.replace(/^the/, '') === a.replace(/^the/, '')) return 0.97;
   if (b.startsWith(a) || a.startsWith(b)) return 0.8;
@@ -72,7 +73,24 @@ async function my5(title: string, debug: any[]) {
   } catch { return []; }
 }
 
-const PROVIDERS: Record<string, (t: string, d: any[]) => Promise<any[]>> = { 'BBC iPlayer': bbc, 'ITVX': itv, 'Channel 4': c4, 'Channel 5': my5 };
+// NOW (Sky): NOW's own catalogue search. Needs NOW's standard request labels but no sign-in.
+// If NOW changes this, see FIXING-SKY.md. Pages look like https://www.nowtv.com/watch/asset/billions/iYEQZ2rcf32XMWvNCcHXvs
+const NOW_HEADERS = { 'X-SkyOTT-Proposition': 'NOWOTT', 'X-SkyOTT-Territory': 'GB', 'X-SkyOTT-ActiveTerritory': 'GB', 'X-SkyOTT-Provider': 'NOWTV', 'X-SkyOTT-Platform': 'PC', 'X-SkyOTT-Device': 'COMPUTER', 'X-SkyOTT-Language': 'en-GB', 'User-Agent': UA, 'Accept': 'application/json' };
+async function now(title: string, debug: any[]) {
+  const u = new URL('https://web.clients.nowtv.com/bff/search/v2');
+  u.searchParams.set('term', cleanTitle(title)); u.searchParams.set('limit', '10');
+  u.searchParams.set('contentSegments', 'ENTERTAINMENT,HAYU,KIDS,MOVIES,HBOMAX');
+  const t0 = Date.now();
+  try {
+    const r = await fetch(u, { headers: NOW_HEADERS }); const text = await r.text();
+    debug.push({ label: 'now', url: u.toString(), status: r.status, ms: Date.now() - t0, sample: text.slice(0, 300) });
+    const list = JSON.parse(text)?.data?.search?.results || [];
+    return list.filter((x: any) => x.slug && x.title).map((x: any) => ({ service: 'Sky / NOW', title: x.title, kind: String(x.type || '').toLowerCase().includes('series') ? 'brand' : 'show',
+      id: x.id, channel: x.channel?.name || '', score: score(title, x.title), url: 'https://www.nowtv.com/watch/asset' + x.slug }));
+  } catch (e) { debug.push({ label: 'now', error: String(e) }); return []; }
+}
+
+const PROVIDERS: Record<string, (t: string, d: any[]) => Promise<any[]>> = { 'BBC iPlayer': bbc, 'ITVX': itv, 'Channel 4': c4, 'Channel 5': my5, 'Sky / NOW': now };
 const rank = (k: string) => (k === 'episode' || k === 'special' ? 0 : 1); // prefer programme/brand pages
 
 Deno.serve(async (req) => {

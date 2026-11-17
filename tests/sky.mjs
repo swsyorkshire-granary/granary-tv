@@ -36,7 +36,9 @@ async function open(url, vp, presetChannels) {
   await page.route('https://cdn.jsdelivr.net/**', r => r.fulfill({ contentType: 'text/javascript', body: stub }));
   await page.route('https://api.open-meteo.com/**', r => r.fulfill({ contentType: 'application/json', headers: { 'Access-Control-Allow-Origin': '*' }, body: JSON.stringify({ current: { temperature_2m: 7.4, weather_code: 3 }, daily: { temperature_2m_max: [9], temperature_2m_min: [3] } }) }));
   await page.route('https://api.tvmaze.com/**', r => r.fulfill({ contentType: 'application/json', body: '[]' }));
-  await page.route('**/functions/v1/find-links', r => r.fulfill({ contentType: 'application/json', headers: { 'Access-Control-Allow-Origin': '*' }, body: '{"best":{}}' }));
+  await page.route('**/functions/v1/find-links', r => { let b = {}; try { b = JSON.parse(r.request().postData() || '{}'); } catch (e) {}
+    const best = b.services === 'Sky / NOW' && /^Atlantic Drama 2/.test(b.title) ? { 'Sky / NOW': { url: 'https://www.nowtv.com/watch/asset/atlantic-drama/iTEST' } } : {};
+    r.fulfill({ contentType: 'application/json', headers: { 'Access-Control-Allow-Origin': '*' }, body: JSON.stringify({ best }) }); });
   await page.route('https://www.ontvnow.co.uk/**', r => { const u = new URL(r.request().url()); if (u.pathname.endsWith('/channels')) return r.fulfill({ contentType: 'application/json', body: JSON.stringify({ data: [{ id: 1, name: 'BBC One Yorkshire HD' }, { id: 2, name: 'BBC Two HD' }, { id: 3, name: 'ITV1 Calendar HD' }, { id: 12, name: 'Channel 4 North HD' }, { id: 13, name: '5 HD' }] }) });
     const id = Number(u.searchParams.get('channel_id')), out = [];
     for (let d = -7; d < 7; d++) for (let h = 6; h < 24; h++) out.push({ title: id === 3 && h === 20 ? 'Vera' : id === 2 && h === 21 ? 'Coast' : 'Show ' + id + '-' + h, start: at(d, h), end: at(d, h + 1), description: 'About show ' + h });
@@ -53,7 +55,11 @@ const rows = await page.$$eval('.gr .badge', b => b.map(x => x.textContent));
 check(rows.includes('ATL') && rows.includes('WIT'), 'Sky Atlantic and Sky Witness added to the grid: ' + rows.join(','));
 check(await page.locator('.tile', { hasText: 'Atlantic Drama 20' }).count() === 1 && await page.locator('.tile', { hasText: 'Witness Show 21' }).count() === 1, 'Sky programmes in the grid');
 await page.locator('.tile', { hasText: 'Atlantic Drama 21' }).click();
-check(/Sky synopsis 21/.test(await page.textContent('#panel')) && /Open NOW/.test(await page.textContent('#panel .acts')) && /nowtv\.com/.test(await page.getAttribute('#panel .primaryProvider', 'href')), 'panel shows Sky synopsis and an Open NOW button to nowtv.com: ' + await page.textContent('#panel .acts'));
+check(/Sky synopsis 21/.test(await page.textContent('#panel')) && /Open (in )?NOW/.test(await page.textContent('#panel .acts')) && /nowtv\.com/.test(await page.getAttribute('#panel .primaryProvider', 'href')), 'panel shows Sky synopsis and an Open NOW button to nowtv.com: ' + await page.textContent('#panel .acts'));
+await page.waitForTimeout(500);
+check(/Open in NOW/.test(await page.textContent('#panel .acts')) && /watch\/asset\/atlantic-drama/.test(await page.getAttribute('#panel .primaryProvider', 'href')), 'NOW button goes straight to the programme page when NOW has it');
+await page.locator('.tile', { hasText: 'Atlantic Drama 19' }).click(); await page.waitForTimeout(400);
+check(/Open NOW/.test(await page.textContent('#panel .acts')), 'programmes NOW does not have keep Open NOW + copy');
 await page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
 await page.evaluate(() => { const a = document.querySelector('#panel .primaryProvider'); a.removeAttribute('target'); a.href = 'javascript:void 0'; a.click(); }); await page.waitForTimeout(300);
 check(/copied – paste it into NOW/.test(await page.textContent('#toast')), 'tapping it copies the title: ' + await page.textContent('#toast'));

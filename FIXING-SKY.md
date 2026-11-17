@@ -29,3 +29,14 @@ Sky doesn't officially support this, so it can stop working if Sky changes its w
 
 ## Tests
 `node tests/sky.mjs` runs the Sky channels against a pretend Sky. It covers the normal case, Sky being down, and Sky renumbering a channel.
+
+## NOW programme links ("Open in NOW")
+- **How it works:** the `find-links` Supabase Edge Function (`supabase/functions/find-links/index.ts`, function `now()`) asks NOW's catalogue search, `https://web.clients.nowtv.com/bff/search/v2`, with `term`, `limit` and `contentSegments=ENTERTAINMENT,…`.
+  - It sends NOW's standard `X-SkyOTT-*` request labels.
+  - No sign-in is needed.
+  - Results carry a `slug`, and the page is `https://www.nowtv.com/watch/asset` + slug.
+- **The app** looks the address up when you select a Sky programme, then remembers it for 14 days (2 days when nothing was found).
+- **If it stops working:** the button just falls back to "Open NOW" plus copying the title, so nothing breaks.
+  - Run the function with `debug: true` to see NOW's reply.
+  - The usual fixes are a new required header, or a change to the `contentSegments` values.
+- **Adding to NOW's watchlist isn't possible this way:** it needs your NOW sign-in plus a signature NOW's app works out for every request (`x-sky-signature`).
