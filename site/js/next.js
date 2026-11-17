@@ -541,6 +541,7 @@
     $('tabGuide').onclick = () => showTab('guide');
     $('tabLibrary').onclick = () => showTab('library');
     if (NX.tv) $('classicLink').href = 'classic-tv.html';
+    document.querySelectorAll('.fireOnly').forEach(e => e.hidden = !window.GranaryApp);
     $('nxSettings').onclick = () => { showSkyStatus(); $('settingsPanel').classList.add('open'); };
     document.querySelectorAll('.cloudPanel .close').forEach(b => { if (!b.onclick) b.onclick = () => b.closest('.cloudPanel').classList.remove('open'); });
     $('settingsPanel').addEventListener('click', e => { if (e.target.id === 'manage' || e.target.id === 'servicesBtn' || e.target.id === 'signInBtn') $('settingsPanel').classList.remove('open'); if (e.target.id === 'refresh') { $('settingsPanel').classList.remove('open'); } }, true);
