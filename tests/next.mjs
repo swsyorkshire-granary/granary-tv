@@ -75,7 +75,21 @@ check(up && typeof up.row.series_link === 'boolean', 'Series button updates the 
 await page.locator('#panel button[aria-label="More options"]').click();
 check(await page.locator('#morePanel.open .providerLookup').count() >= 3, 'More shows other services');
 await page.locator('#morePanel .close').click();
-await page.locator('.st', { hasText: 'Coast' }).click();   // already selected → options box
+// Vera has been shown: tap to highlight, tap again starts it (opens the panel's main link)
+await page.locator('.st', { hasText: 'Vera' }).click(); if (await page.locator('#tileMenu.open').count()) await page.locator('#tileMenu .close').click();
+const [popup] = await Promise.all([page.context().waitForEvent('page', { timeout: 5000 }).catch(() => null), page.locator('.st', { hasText: 'Vera' }).click()]);
+check(!!popup && !(await page.locator('#tileMenu.open').count()), 'second tap on a ready show starts it: ' + (popup ? popup.url().slice(0, 60) : 'nothing opened'));
+if (popup) await popup.close();
+// press and hold, and the ⋯ button, open the options box
+const box = await page.locator('.st', { hasText: 'Vera' }).boundingBox();
+await page.mouse.move(box.x + 40, box.y + 40); await page.mouse.down(); await page.waitForTimeout(750); await page.mouse.up(); await page.waitForTimeout(150);
+check(await page.locator('#tileMenu.open').count() === 1, 'press and hold opens the options box');
+await page.locator('#tileMenu .close').click();
+await page.locator('.st', { hasText: 'Vera' }).locator('.tileMore').click();
+check(await page.locator('#tileMenu.open').count() === 1, '⋯ on the tile opens the options box');
+await page.locator('#tileMenu .close').click();
+await page.locator('.st', { hasText: 'Coast' }).click(); if (await page.locator('#tileMenu.open').count()) await page.locator('#tileMenu .close').click();
+await page.locator('.st', { hasText: 'Coast' }).click();   // highlighted + not shown yet → options box
 check(await page.locator('#tileMenu.open').isVisible(), 'pressing the highlighted show opens the options box');
 check(/Remove from library/.test(await page.textContent('#tileMenu')) && /series link/.test(await page.textContent('#tileMenu')), 'box offers watch/series/remove');
 await page.locator('#tileMenu .danger').click(); await page.waitForTimeout(600);

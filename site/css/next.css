@@ -98,6 +98,9 @@ body.scrolled .info .tag{font-size:.65rem}
 .st .art span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;margin-right:.4rem}
 .st small{color:var(--soft);font-size:.8rem;padding:0 .15rem}
 .st.sel{box-shadow:0 0 0 2px var(--ink)}
+.st{position:relative;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
+.tileMore{position:absolute;right:.55rem;bottom:.55rem;width:2rem;height:2rem;border-radius:999px;background:var(--tile);display:grid;place-items:center;font-weight:800;color:var(--soft);line-height:1}
+.st.sel .tileMore{background:var(--ink);color:#fff}
 .st .hint{display:none;font-size:.72rem;font-weight:700;color:var(--acc);padding:0 .15rem}
 .st.sel .hint{display:block}
 .art.ph{justify-content:space-between;position:relative;overflow:hidden}

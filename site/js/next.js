@@ -362,9 +362,28 @@
       if (g.onNow) { sm.append(h('span', 'live', '● On now'), document.createTextNode(' · ' + (g.channel || ''))); }
       else if (!g.aired) sm.textContent = g.next ? 'First shown ' + fmtWhen(g.next) : 'Not shown yet';
       else sm.textContent = 'Ready to watch' + (g.next ? ' · next ' + fmtWhen(g.next) : '');
-      t.append(art, h('b', '', (g.linked ? '🔗 ' : '') + g.title), sm, h('span', 'hint', NX.tv ? 'Press OK for options' : 'Tap again for options'));
+      const ready = g.aired || g.onNow;
+      t.append(art, h('b', '', (g.linked ? '🔗 ' : '') + g.title), sm, h('span', 'hint', NX.tv ? 'Press OK for options' : ready ? 'Tap again to watch · hold or ⋯ for options' : 'Tap again for options'));
+      if (!NX.tv) {
+        const more = h('span', 'tileMore', '⋯'); more.setAttribute('role', 'button'); more.setAttribute('aria-label', 'Options for ' + g.title);
+        more.addEventListener('click', e => { e.stopPropagation(); if (NX.libSel !== g.key) selectShow(g.key, false); openTileMenu(g, t); });
+        t.append(more);
+        // press and hold = options box
+        let holdTimer = null;
+        t.addEventListener('pointerdown', e => { holdTimer = null; if (e.target === more) return; holdTimer = setTimeout(() => { holdTimer = 'fired'; if (NX.libSel !== g.key) selectShow(g.key, false); openTileMenu(g, t); }, 550); });
+        const cancel = () => { if (holdTimer && holdTimer !== 'fired') clearTimeout(holdTimer); };
+        ['pointerup', 'pointerleave', 'pointercancel'].forEach(ev => t.addEventListener(ev, cancel));
+        t.addEventListener('click', e => { if (holdTimer === 'fired') { e.stopImmediatePropagation(); e.preventDefault(); } holdTimer = null; }, true);
+        t.addEventListener('contextmenu', e => e.preventDefault());
+      }
       // First press selects; pressing the highlighted show again opens its options box (on a TV, OK opens it straight away).
-      t.onclick = () => { if (NX.libSel === g.key && !NX.phone()) openTileMenu(g, t); else selectShow(g.key, true); };
+      // TV: OK opens the options box. iPad/computer: tapping the highlighted show starts it (or shows options if it hasn't been on yet).
+      t.onclick = e => {
+        if (NX.libSel !== g.key || NX.phone()) { selectShow(g.key, true); return; }
+        if (NX.tv || e.detail === 0 || !ready) { openTileMenu(g, t); return; }   // remote/keyboard OK (detail 0) → options
+        const main = $('panel').querySelector('.acts a');
+        if (main) main.click(); else openTileMenu(g, t);
+      };
       t.onfocus = () => { if (NX.libSel !== g.key) selectShow(g.key, false); };
       grid.append(t);
     });
