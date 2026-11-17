@@ -181,7 +181,7 @@
     if (onNow) when += ' · on now'; else if (p.start > now && p.start - now < 3 * 36e5) when += ' · starts in ' + Math.max(1, Math.round((p.start - now) / 60000)) + ' min';
     text.append(h('div', 'meta', when));
     const t = h('h1', '', p.title);
-    if (linked) t.append(h('span', 'tag', 'SERIES LINKED')); else if (lib) t.append(h('span', 'tag ok', 'IN LIBRARY'));
+    if (linked) t.append(h('span', 'tag link', 'SERIES LINKED')); else if (lib) t.append(h('span', 'tag ok', 'IN LIBRARY'));
     text.append(t, h('p', 'desc', p.description || (p.genre ? p.genre : '')));
     if (onNow) { const bar = h('div', 'bar'), i = h('i'); i.style.width = Math.round((now - p.start) / (p.end - p.start) * 100) + '%'; bar.append(i); text.append(bar); }
     const msg = h('div', 'msg'); msg.id = 'programmeMessage'; text.append(msg);
@@ -203,7 +203,7 @@
       };
       acts.append(b);
     }
-    const more = h('button', 'btn', '⋯'); more.setAttribute('aria-label', 'More options'); more.onclick = () => openMore(p.title, service, p.description, null);
+    const more = h('button', 'btn', 'More'); more.setAttribute('aria-label', 'More options'); more.onclick = () => openMore(p.title, service, p.description, null);
     acts.append(more);
     panel.innerHTML = ''; panel.append(closeBtn(), text, acts);
   }
@@ -259,12 +259,21 @@
       startGranaryMetadataLookups(todo.map(g => ({ title: g.title }))).finally(() => { metaBusy = false; if (NX.groups.some(needs)) setTimeout(openLibrary, 500); });
     }
   };
+  // Tell you when the series check finds a new showing of something you follow.
+  function seriesNews(before) {
+    if (!before.size) return;
+    const found = NX.groups.filter(g => g.linked && g.next && before.has(g.key) && before.get(g.key) !== +g.next && +g.next > Date.now());
+    if (!found.length) return;
+    const f = found[0], more = found.length > 1 ? ' and ' + (found.length - 1) + ' more' : '';
+    toast('🔗 New showing: ' + f.title + ' – ' + fmtWhen(f.next) + more);
+  }
   function sortedGroups() {
     const g = [...NX.groups];
     g.sort((a, b) => (b.onNow - a.onNow) || ((a.next ? 0 : 1) - (b.next ? 0 : 1)) || ((a.next || 0) - (b.next || 0)) || a.title.localeCompare(b.title));
     const f = { all: () => true, ready: x => x.aired || x.onNow, soon: x => !x.aired && !x.onNow, linked: x => x.linked, new: x => x.isNew }[NX.libFilter] || (() => true);
     return g.filter(f);
   }
+  function shade(hex) { const n = parseInt(hex.slice(1), 16), f = v => Math.max(0, Math.round(v * 0.55)); return 'rgb(' + f(n >> 16) + ',' + f(n >> 8 & 255) + ',' + f(n & 255) + ')'; }
   const TINTS = ['#e7f4f1', '#f1ecfd', '#eef1f5', '#fdeef0', '#f2f5ea', '#fdf3e3', '#e8f0fb', '#f5ecf4'];
   function renderLibrary() {
     const chips = $('libChips'), grid = $('libGrid'); chips.innerHTML = ''; grid.innerHTML = '';
@@ -289,7 +298,7 @@
       const t = h('button', 'st' + (g.key === NX.libSel ? ' sel' : '')); t.dataset.k = g.key;
       const art = h('div', 'art'); art.append(h('span', '', g.channel.replace(/\s+HD$/i, '') || 'Granary TV'));
       if (g.meta && g.meta.match_status === 'matched' && g.meta.image_url) { art.style.backgroundImage = 'url("' + g.meta.image_url + '")'; art.classList.add('img'); }
-      else art.style.background = TINTS[Math.abs([...g.key].reduce((a, c) => a + c.charCodeAt(0), 0)) % TINTS.length];
+      else { const bd = badgeFor(g.channel); art.classList.add('ph'); art.style.background = 'linear-gradient(135deg,' + bd.col + ',' + shade(bd.col) + ')'; art.append(h('i', 'phBadge', bd.label)); }
       const state = g.onNow ? ['live', '● ON NOW'] : g.aired ? ['ready', '✓ READY'] : ['soon', '⏰ COMING UP'];
       art.append(h('em', 'state ' + state[0], g.isNew && g.aired && !g.onNow ? '✓ NEW EPISODE' : state[1]));
       t.classList.add('is-' + state[0]);
@@ -297,7 +306,7 @@
       if (g.onNow) { sm.append(h('span', 'live', '● On now'), document.createTextNode(' · ' + (g.channel || ''))); }
       else if (!g.aired) sm.textContent = g.next ? 'First shown ' + fmtWhen(g.next) : 'Not shown yet';
       else sm.textContent = 'Ready to watch' + (g.next ? ' · next ' + fmtWhen(g.next) : '');
-      t.append(art, h('b', '', (g.linked ? '🔗 ' : '') + g.title), sm);
+      t.append(art, h('b', '', (g.linked ? '🔗 ' : '') + g.title), sm, h('span', 'hint', NX.tv ? 'Press OK for options' : 'Tap again for options'));
       // First press selects; pressing the highlighted show again opens its options box (on a TV, OK opens it straight away).
       t.onclick = () => { if (NX.libSel === g.key && !NX.phone()) openTileMenu(g, t); else selectShow(g.key, true); };
       t.onfocus = () => { if (NX.libSel !== g.key) selectShow(g.key, false); };
@@ -364,7 +373,7 @@
       : !g.aired ? (g.next ? 'Not shown yet – first showing ' + fmtWhen(g.next) + ' on ' + g.channel : 'Not shown yet')
       : g.next ? ('Ready to watch · next showing ' + fmtWhen(g.next) + ' · ' + g.channel) : ('Ready to watch · ' + (g.channel || '') + ' · no showings in the next 7 days');
     text.append(h('div', 'meta', when));
-    const t = h('h1', '', g.title); if (!g.aired && !g.onNow) t.append(h('span', 'tag soon', 'COMING UP')); else if (!g.onNow) t.append(h('span', 'tag ok', 'READY TO WATCH')); if (g.linked) t.append(h('span', 'tag', 'SERIES LINKED')); if (g.isNew && g.aired) t.append(h('span', 'tag', 'NEW EPISODE'));
+    const t = h('h1', '', g.title); if (!g.aired && !g.onNow) t.append(h('span', 'tag soon', 'COMING UP')); else if (!g.onNow) t.append(h('span', 'tag ok', 'READY TO WATCH')); if (g.linked) t.append(h('span', 'tag link', 'SERIES LINKED')); if (g.isNew && g.aired) t.append(h('span', 'tag', 'NEW EPISODE'));
     const desc = (g.meta && g.meta.match_status === 'matched' && g.meta.summary) || g.items.find(i => i.description)?.description || '';
     text.append(t, h('p', 'desc', desc));
     const msg = h('div', 'msg'); msg.id = 'programmeMessage'; text.append(msg);
@@ -379,7 +388,7 @@
     sb.onclick = async () => { sb.disabled = true; await granarySetSeriesLink(g.items, !g.linked); };
     acts.append(sb);
     if (NX.phone()) { const rm = h('button', 'btn', '🗑 Remove'); rm.onclick = () => removeShow(g); acts.append(rm); }
-    const more = h('button', 'btn', '⋯'); more.setAttribute('aria-label', 'More options'); more.onclick = () => openMore(g.title, service, desc, g); acts.append(more);
+    const more = h('button', 'btn', 'More'); more.setAttribute('aria-label', 'More options'); more.onclick = () => openMore(g.title, service, desc, g); acts.append(more);
     panel.innerHTML = ''; panel.append(closeBtn(), text, acts);
   }
 
@@ -407,7 +416,9 @@
   // Series links: refresh the library after each background check.
   const baseSeries = granarySeriesBackground;
   granarySeriesBackground = async function () { if (weekOffset !== 0) return;   // only this week's listings say what's coming up
-    await baseSeries(); if (currentUser && NX.libLoaded) openLibrary(); };
+    const before = new Map(NX.groups.map(g => [g.key, g.next ? +g.next : 0]));
+    await baseSeries();
+    if (currentUser && NX.libLoaded) { await openLibrary(); seriesNews(before); return; } if (currentUser && NX.libLoaded) openLibrary(); };
 
   // ── Clock and weather dials ─────────────────────────────────
   function dial(el, frac, colour, text, title) {
@@ -461,6 +472,7 @@
     document.querySelectorAll('.cloudPanel').forEach(p => p.addEventListener('click', e => { if (e.target === p) { p.classList.remove('open'); if (p.id === 'tileMenu') closeTileMenu(); } }));
     $('earlier').onclick = () => { setWindow(startHour - 1); render(); };
     $('later').onclick = () => { setWindow(startHour + 1); render(); };
+    document.querySelectorAll('.jump').forEach(b => b.onclick = () => { const hr = b.dataset.h === 'eve' ? defaultStart() : +b.dataset.h; setWindow(hr); NX.sel = null; render(); });
     $('nowBtn').onclick = () => { const d = new Date(); selected = 0; setWindow(Math.floor((d.getHours() * 60 + d.getMinutes()) / 30) / 2); NX.sel = null; renderDays(); render(); };
     const hs = $('nxHours'); for (let hr = 6; hr <= 21; hr++) hs.add(new Option(pad(hr) + ':00', hr)); hs.value = String(defaultStart());
     hs.onchange = () => { localStorage.setItem(WIN_KEY, hs.value); setWindow(+hs.value); render(); };
@@ -468,6 +480,9 @@
     tickClock(); setInterval(tickClock, 15000); loadWeather(); setInterval(loadWeather, 15 * 60 * 1000);
     if (location.hash === '#library') showTab('library');
     document.addEventListener('visibilitychange', () => { if (!document.hidden && NX.toastKind === 'copy') setTimeout(hideToast, 1500); });
+    const setHdr = () => document.documentElement.style.setProperty('--hdr', document.querySelector('.top').offsetHeight + 'px');
+    setHdr(); addEventListener('resize', setHdr);
+    addEventListener('scroll', () => { const y = scrollY, on = document.body.classList.contains('scrolled'); if (!on && y > 60) document.body.classList.add('scrolled'); else if (on && y < 8) document.body.classList.remove('scrolled'); }, { passive: true });
     let lastPhone = NX.phone();
     addEventListener('resize', () => { const p = NX.phone(); if (p !== lastPhone) { lastPhone = p; setWindow(startHour); render(); } else sizeRows($('nxGrid')); });
     // On a TV, start with the selected programme focused.
