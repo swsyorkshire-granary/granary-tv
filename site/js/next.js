@@ -170,13 +170,15 @@
     nowPending.set(k, p); return p;
   }
   const mobileOS = () => /iPad|iPhone|iPod|Android/i.test(UA) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  // Tested on the iPad (17 Nov): type must be the short upper-case form ("SERIES", not "CATALOGUE/SERIES" or "series").
   function nowDeepLink(info, action, scheme) {
-    const data = encodeURIComponent(JSON.stringify({ providerSeriesId: info.pid, type: info.type, action }));
+    const type = String(info.type || 'SERIES').split('/').pop().toUpperCase();
+    const data = encodeURIComponent(JSON.stringify({ providerSeriesId: info.pid, type, action }));
     return (scheme ? 'nowtv://www.nowtv.com/deeplink?deeplinkData=' : 'https://www.nowtv.com/deeplink?deeplinkData=') + data;
   }
   function wireNow(a, info, action, title) {
     a.classList.remove('primaryProvider'); a.classList.add('nowDirect'); a.dataset.found = '1';
-    a.href = nowDeepLink(info, action, mobileOS()); a.removeAttribute('target');
+    a.href = nowDeepLink(info, action, false); a.removeAttribute('target');
     a.onclick = e => {
       if (action === 'PDP_ADD_WATCHLIST') toast('Opening NOW to add “' + title + '” to My List');
       if (!inApp()) return;                                   // browser: the link itself opens the NOW app (or nowtv.com)
