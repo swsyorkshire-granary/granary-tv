@@ -116,6 +116,8 @@
     const rowH = Math.max(base, Math.min(base * (NX.phone() ? 2.3 : 1.8), avail / rows));
     g.style.setProperty('--rowh', rowH + 'px');
     g.classList.toggle('tall', rowH >= base * 1.25);
+    // very short programmes: hide text that can't fit rather than show fragments
+    g.querySelectorAll('.tile').forEach(t => { const w = t.offsetWidth; t.classList.toggle('tiny', w < 2.6 * rem); t.classList.toggle('narrow', w < 5.5 * rem); });
   }
   function defaultTile() {
     const now = new Date(), isToday = weekOffset === 0 && selected === 0;
