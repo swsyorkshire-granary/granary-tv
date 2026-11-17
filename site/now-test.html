@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>NOW link test</title>
+<style>
+body{font:17px/1.4 -apple-system,Inter,sans-serif;background:#fafaf9;color:#14161a;margin:0;padding:24px;max-width:720px}
+h1{font-size:24px;margin:0 0 6px}p{color:#6b7280;margin:0 0 18px}
+a{display:flex;align-items:center;gap:14px;background:#fff;border-radius:14px;padding:16px 18px;margin:0 0 10px;text-decoration:none;color:#14161a;box-shadow:0 1px 2px #0001;font-weight:600}
+a b{display:inline-grid;place-items:center;width:34px;height:34px;border-radius:999px;background:#ff5a3c;color:#fff;flex:none}
+a small{display:block;color:#9aa1ab;font-weight:500;font-size:13px;word-break:break-all}
+</style></head><body>
+<h1>NOW link test – FBI</h1>
+<p>Tap each link. After each one, come back here (swipe from the left edge or use the app switcher) and note which numbers open <b>FBI</b> itself, rather than NOW's home page. Nothing gets added to My List on this page.</p>
+<div id="list"></div>
+<script>
+const id = 'iYEQYZDoViN8Rrwj3GQ1Cq';
+const d = o => encodeURIComponent(JSON.stringify(o));
+const tests = [
+  ['App link, type SERIES', 'nowtv://www.nowtv.com/deeplink?deeplinkData=' + d({ providerSeriesId: id, type: 'SERIES', action: 'PDP' })],
+  ['App link, type series (lower case)', 'nowtv://www.nowtv.com/deeplink?deeplinkData=' + d({ providerSeriesId: id, type: 'series', action: 'PDP' })],
+  ['App link, type CATALOGUE/SERIES (current)', 'nowtv://www.nowtv.com/deeplink?deeplinkData=' + d({ providerSeriesId: id, type: 'CATALOGUE/SERIES', action: 'PDP' })],
+  ['App link, with pvid too', 'nowtv://www.nowtv.com/deeplink?deeplinkData=' + d({ pvid: id, providerSeriesId: id, type: 'SERIES', action: 'PDP' })],
+  ['Web deep link (NOW website decides)', 'https://www.nowtv.com/deeplink?deeplinkData=' + d({ providerSeriesId: id, type: 'SERIES', action: 'PDP' })],
+  ['Web deep link with slash', 'https://www.nowtv.com/deeplink/?deeplinkData=' + d({ providerSeriesId: id, type: 'SERIES', action: 'PDP' })],
+  ['App link to the programme page address', 'nowtv://www.nowtv.com/watch/asset/fbi/' + id],
+];
+document.getElementById('list').innerHTML = tests.map(([label, url], i) => `<a href="${url}"><b>${i + 1}</b><span>${label}<small>${decodeURIComponent(url).slice(0, 140)}</small></span></a>`).join('');
+</script>
+</body></html>
