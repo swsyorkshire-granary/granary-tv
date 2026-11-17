@@ -153,7 +153,7 @@
   // NOW: find the programme on NOW (via the find-links helper), then use NOW's own deep links:
   //   nowtv://www.nowtv.com/deeplink?deeplinkData={"providerSeriesId":…,"type":…,"action":"PDP" | "PDP_ADD_WATCHLIST"}
   // NOW opens the programme (or adds it to My List) itself, using your own signed-in NOW app – no password here.
-  const NOW_CACHE_KEY = 'granary-now-pages', NOW_PKG = 'com.bskyb.nowtv.beta';
+  const NOW_CACHE_KEY = 'granary-now-pages-v2', NOW_PKG = 'com.bskyb.nowtv.beta';
   function nowCache() { try { return JSON.parse(localStorage.getItem(NOW_CACHE_KEY) || '{}'); } catch (e) { return {}; } }
   const nowPending = new Map();
   const assetInfo = url => { const m = /nowtv\.com\/watch\/asset\/[^/]+\/([A-Za-z0-9]+)/.exec(url || ''); return m ? { url, pid: m[1], type: 'CATALOGUE/SERIES' } : null; };

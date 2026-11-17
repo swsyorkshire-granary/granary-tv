@@ -85,8 +85,10 @@ async function now(title: string, debug: any[]) {
     const r = await fetch(u, { headers: NOW_HEADERS }); const text = await r.text();
     debug.push({ label: 'now', url: u.toString(), status: r.status, ms: Date.now() - t0, sample: text.slice(0, 300) });
     const list = JSON.parse(text)?.data?.search?.results || [];
+    // NOW labels some versions: "Gomorrah (With subtitles)", "Gomorrah (Dubbed)". Match on the name, prefer the original.
+    const nowScore = (t: string) => { const m = /\s*\((with subtitles|subtitled|dubbed|english dub)\)\s*$/i.exec(t); if (!m) return score(title, t); const s = score(title, t.slice(0, m.index)); return s >= 0.95 ? s - (/dub/i.test(m[1]) ? 0.04 : 0.02) : s; };
     return list.filter((x: any) => x.slug && x.title).map((x: any) => ({ service: 'Sky / NOW', title: x.title, kind: String(x.type || '').toLowerCase().includes('series') ? 'brand' : 'show',
-      id: x.id, channel: x.channel?.name || '', score: score(title, x.title), url: 'https://www.nowtv.com/watch/asset' + x.slug,
+      id: x.id, channel: x.channel?.name || '', score: nowScore(x.title), url: 'https://www.nowtv.com/watch/asset' + x.slug,
       // for NOW's own deep links: nowtv://www.nowtv.com/deeplink?deeplinkData={providerSeriesId,type,action}
       providerSeriesId: x.providerSeriesId || String(x.slug).split('/').pop(), nowType: x.type || 'CATALOGUE/SERIES' }));
   } catch (e) { debug.push({ label: 'now', error: String(e) }); return []; }
