@@ -497,7 +497,8 @@
   const baseSave = save;
   save = function () {
     baseSave();
-    if (adopting) return;
+    // The guide also re-saves the list every time it loads; only changes made in the Channels window count.
+    if (adopting || !$('modal').classList.contains('open')) return;
     try { localStorage.setItem(CH_AT, String(Date.now())); } catch (e) {}
     clearTimeout(chPush); chPush = setTimeout(pushChannels, 1200);
   };
@@ -511,14 +512,16 @@
       if (!error && data && data.user) currentUser = data.user;
     } catch (e) { console.warn('Granary TV: could not save channels to your account –', e.message || e); }
   }
-  async function syncChannelsFromAccount() {
-    if (!currentUser) return;
+  NX.version = '2.0.49';
+  function chStatus(t) { NX.chStatus = t + ' · ' + new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }); const el = $('chSync'); if (el) el.textContent = 'Version ' + NX.version + ' · Channels: ' + NX.chStatus; }
+  async function syncChannelsFromAccount(force) {
+    if (!currentUser) { chStatus('not signed in, so not synced'); return; }
     // the saved sign-in can hold old account details: ask for the latest before comparing
     try { const { data } = await granaryClient.auth.getUser(); if (data && data.user) currentUser = data.user; } catch (e) {}
     const md = currentUser.user_metadata || {}, remote = md.granary_channels, remoteAt = Number(md.granary_channels_at || 0);
-    const localAt = Number(localStorage.getItem(CH_AT) || 0);
+    const localAt = force ? 0 : Number(localStorage.getItem(CH_AT) || 0);
     const keyOf = c => c.id != null ? 'id:' + c.id : 'n:' + norm(c.display);
-    if (Array.isArray(remote) && remote.length && remoteAt > localAt) {
+    if (Array.isArray(remote) && remote.length && (remoteAt > localAt || force)) {
       // First sync on this device: combine both lists so nothing is lost; after that the latest change wins.
       let list = remote;
       // use this device's saved list even if the guide hasn't finished loading it yet
@@ -529,12 +532,13 @@
       try { localStorage.setItem('agrid-channel-ids', JSON.stringify(list)); localStorage.setItem(CH_AT, String(merged ? Date.now() : remoteAt)); localStorage.setItem('granary-sky-added', '1'); } catch (e) {}
       if (directory.length) { channels = list.map(c => Object.assign({}, c)); if (typeof sortChannels === 'function') sortChannels(); loadListings(); }
       adopting = false;
-      if (merged) pushChannels();
+      chStatus('loaded ' + list.length + ' from your account');
+      if (merged && !force) pushChannels();
     } else if (!Array.isArray(remote) || !remote.length) {
       // Nothing on the account yet: save this device's list once. Otherwise only an actual add/remove saves.
       if (!localAt) try { localStorage.setItem(CH_AT, String(Date.now())); } catch (e) {}
-      pushChannels();
-    }
+      pushChannels(); chStatus('saved this device\'s list to your account');
+    } else chStatus('up to date (' + channels.length + ')');
   }
   NX.syncChannelsFromAccount = syncChannelsFromAccount;
 
@@ -591,7 +595,7 @@
     $('tabGuide').onclick = () => showTab('guide');
     $('tabLibrary').onclick = () => showTab('library');
     if (NX.tv) $('classicLink').href = 'classic-tv.html';
-    $('nxSettings').onclick = () => { showSkyStatus(); $('settingsPanel').classList.add('open'); };
+    $('nxSettings').onclick = () => { showSkyStatus(); chStatus(NX.chStatus ? NX.chStatus.split(' · ')[0] : 'not checked yet'); $('settingsPanel').classList.add('open'); };
     document.querySelectorAll('.cloudPanel .close').forEach(b => { if (!b.onclick) b.onclick = () => b.closest('.cloudPanel').classList.remove('open'); });
     $('settingsPanel').addEventListener('click', e => { if (e.target.id === 'manage' || e.target.id === 'servicesBtn' || e.target.id === 'signInBtn') $('settingsPanel').classList.remove('open'); if (e.target.id === 'refresh') { $('settingsPanel').classList.remove('open'); } }, true);
     document.querySelectorAll('.cloudPanel').forEach(p => p.addEventListener('click', e => { if (e.target === p) { p.classList.remove('open'); if (p.id === 'tileMenu') closeTileMenu(); } }));
@@ -599,6 +603,7 @@
     $('later').onclick = () => { setWindow(startHour + 1); render(); };
     document.querySelectorAll('.jump').forEach(b => b.onclick = () => { const hr = b.dataset.h === 'eve' ? defaultStart() : +b.dataset.h; setWindow(hr); NX.sel = null; render(); });
     $('nowBtn').onclick = () => { const d = new Date(); selected = 0; setWindow(Math.floor((d.getHours() * 60 + d.getMinutes()) / 30) / 2); NX.sel = null; renderDays(); render(); };
+    $('loadMyChannels').onclick = async () => { $('loadMyChannels').textContent = 'Loading…'; await syncChannelsFromAccount(true); $('loadMyChannels').textContent = 'Load channels from my account'; };
     const hs = $('nxHours'); for (let hr = 6; hr <= 21; hr++) hs.add(new Option(pad(hr) + ':00', hr)); hs.value = String(defaultStart());
     hs.onchange = () => { localStorage.setItem(WIN_KEY, hs.value); setWindow(+hs.value); render(); };
     renderDays();

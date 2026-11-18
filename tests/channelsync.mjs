@@ -59,4 +59,15 @@ await page.waitForTimeout(1800);
 const last = await page.evaluate(() => { const u = window.__updates || []; return u.length ? (u[u.length - 1].data.granary_channels || []).map(c => c.display).join('+') : ''; });
 check(last && !/Sky Witness/.test(last), 'removing a channel updates the account: ' + last);
 check(page.errs.length === 0, 'no page errors ' + page.errs.join(' | '));
+// 4. The Settings button loads the account's list even when this device thinks it's newer
+page = await open('index.html', { width: 390, height: 844 }, { fn: r => { window.__md = { granary_channels: r, granary_channels_at: Date.now() - 60000 }; localStorage.setItem('agrid-channel-ids', JSON.stringify([{ id: 3, display: 'ITV1', sourceName: 'ITV1 Calendar HD' }])); localStorage.setItem('granary-channels-at', String(Date.now())); localStorage.setItem('granary-sky-added', '1'); }, arg: remote });
+await page.waitForTimeout(1500);
+await page.click('#nxSettings');
+check(/Version 2\.0\.49 · Channels: up to date/.test(await page.textContent('#chSync')), 'Settings shows version and sync status: ' + await page.textContent('#chSync'));
+await page.click('#loadMyChannels'); await page.waitForTimeout(1500);
+check(/loaded \d+ from your account/.test(await page.textContent('#chSync')), 'button reports loading: ' + await page.textContent('#chSync'));
+await page.locator('#settingsPanel .close').click();
+await page.waitForFunction(() => /refreshed|saved|unavailable/i.test(document.getElementById('status').textContent), null, { timeout: 20000 }); await page.waitForTimeout(300);
+const b4 = await page.$$eval('.gr .badge', b => b.map(x => x.textContent));
+check(b4.includes('ATL') && b4.includes('WIT'), 'Load channels from my account brings in Sky: ' + b4.join(','));
 await b.close(); server.close(); console.log(fail ? fail + ' FAILED' : 'ALL PASSED'); process.exit(fail ? 1 : 0);
