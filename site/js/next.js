@@ -512,7 +512,20 @@
       if (!error && data && data.user) currentUser = data.user;
     } catch (e) { console.warn('Granary TV: could not save channels to your account –', e.message || e); }
   }
-  NX.version = '2.0.51';
+  NX.version = '2.0.52';
+  // ── Auto-update: if a newer version is published, reload past the browser's cached copy ──
+  async function checkForUpdate() {
+    try {
+      const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;
+      const v = (await r.json()).v; if (!v || v === NX.version) return;
+      const key = 'granary-updated-to'; if (sessionStorage.getItem(key) === v) return;  // only try once per version
+      sessionStorage.setItem(key, v);
+      const u = new URL(location.href); u.searchParams.set('v', v); location.replace(u.toString());
+    } catch (e) {}
+  }
+  setTimeout(checkForUpdate, 1500);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) checkForUpdate(); });
+  setInterval(checkForUpdate, 30 * 60000);
   function chStatus(t) { NX.chStatus = t + ' · ' + new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }); const el = $('chSync'); if (el) el.textContent = 'Version ' + NX.version + ' · Channels: ' + NX.chStatus; }
   async function syncChannelsFromAccount(force) {
     if (!currentUser) { chStatus('not signed in, so not synced'); return; }
