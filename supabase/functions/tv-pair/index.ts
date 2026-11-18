@@ -45,6 +45,11 @@ Deno.serve(async (req) => {
   const { data: row } = await admin.from('tv_pairings').select('*').eq('code', code).maybeSingle();
   if (!row || new Date(row.expires_at) < now) return json({ expired: true, error: 'That code has expired or doesn’t exist – show a new one on the TV' }, 404);
 
+  if (body.action === 'cancel') {                                                   // TV gave up / already signed in
+    if (!row.token_hash) await admin.from('tv_pairings').delete().eq('code', code);
+    return json({ ok: true });
+  }
+
   if (body.action === 'poll') {
     if (!row.token_hash) return json({ waiting: true });
     await admin.from('tv_pairings').delete().eq('code', code);                       // one use only

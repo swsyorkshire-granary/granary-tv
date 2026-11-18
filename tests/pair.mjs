@@ -29,6 +29,7 @@ async function open(url, vp, signedOut) {
     if (b.action === 'nearby') return send({ codes: Object.keys(pairs).filter(c => !pairs[c].token) });
     if (b.action === 'start') { const code = 'K7P4Q' + (++pairN); pairs[code] = {}; return send({ code }); }
     const p = pairs[b.code]; if (!p) return send({ expired: true });
+    if (b.action === 'cancel') { if (!p.token) delete pairs[b.code]; return send({ ok: true }); }
     if (b.action === 'poll') { if (!p.token) return send({ waiting: true }); delete pairs[b.code]; return send({ email: 't@example.com', token_hash: p.token }); }
     if (b.action === 'approve') { if (r.request().headers()['authorization'] !== 'Bearer phone-token') return send({ error: 'Please sign in on this phone first' }); p.token = 'hash-' + b.code; return send({ ok: true }); }
   });
@@ -74,5 +75,15 @@ check((await ph2.textContent('#pairAskCode')).trim().replace('-', '') === c2 && 
 await ph2.click('#pairAllow'); await ph2.waitForTimeout(400); await tv2.clock.runFor(3500); await tv2.waitForTimeout(800);
 check(/Signed in/.test(await tv2.textContent('#pairMsg')), 'TV signs in after QR approval');
 check(!/pair=/.test(ph2.url()), 'code removed from the phone address');
+// Closing the TV panel cancels its code, so phones don't ask later
+const tv3 = await open('tv.html', { width: 1920, height: 1080 }, true);
+await tv3.evaluate(() => openAuth()); await tv3.waitForTimeout(500);
+const c3 = (await tv3.textContent('#pairCode')).trim().replace('-', '');
+await tv3.click('#authPanel .close'); await tv3.clock.runFor(3500); await tv3.waitForTimeout(500);
+check(!(c3 in pairs), 'closing the TV sign-in cancels its code');
+// A TV that is already signed in shows no QR/code
+const tv4 = await open('tv.html', { width: 1920, height: 1080 });
+await tv4.waitForTimeout(800); await tv4.evaluate(() => openAuth()); await tv4.waitForTimeout(500);
+check(!(await tv4.isVisible('#pairQr')) && !(await tv4.isVisible('#pairStart')), 'signed-in TV shows no sign-in code');
 check(tv.errs.length === 0 && phone.errs.length === 0, 'no page errors ' + tv.errs.concat(phone.errs).join(' | '));
 await b.close(); server.close(); console.log(fail ? fail + ' FAILED' : 'ALL PASSED'); process.exit(fail ? 1 : 0);

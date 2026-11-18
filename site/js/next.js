@@ -485,6 +485,8 @@
   updateCloudUI = function () {
     baseUpdate();
     $('signInBtn').textContent = currentUser ? 'Account and password' : 'Sign in';
+    const pb = document.querySelector('.pairBox'); if (pb) pb.hidden = !!currentUser;
+    if (currentUser && pairActive) cancelPair();
     const ptb = $('pairTvBtn'); if (ptb) ptb.style.display = currentUser ? '' : 'none';   // only a signed-in device can sign a TV in
     const id = currentUser ? currentUser.id : null;
     if (id === lastUser) return; lastUser = id;
@@ -513,7 +515,7 @@
       if (!error && data && data.user) currentUser = data.user;
     } catch (e) { console.warn('Granary TV: could not save channels to your account –', e.message || e); }
   }
-  NX.version = '2.0.56';
+  NX.version = '2.0.57';
   // ── Auto-update: if a newer version is published, reload past the browser's cached copy ──
   async function checkForUpdate() {
     try {
@@ -612,19 +614,23 @@
     catch (e) { return { error: e && e.name === 'AbortError' ? 'No reply after 15 seconds – check the connection and try again.' : 'Could not reach Granary: ' + (e && e.message || e) }; }
     finally { clearTimeout(t); }
   };
-  let pairTimer = null;
+  let pairTimer = null, pairActive = '';
+  function cancelPair() { clearTimeout(pairTimer); pairTimer = null; if (pairActive) { const c = pairActive; pairActive = ''; pairCall({ action: 'cancel', code: c }); } }
+  NX.cancelPair = cancelPair;
   async function startPair() {
-    clearTimeout(pairTimer); $('pairShow').hidden = false; $('pairStart').hidden = true; $('pairCode').textContent = '······'; $('pairMsg').textContent = 'Getting a code…';
+    cancelPair(); $('pairShow').hidden = false; $('pairStart').hidden = true; $('pairCode').textContent = '······'; $('pairMsg').textContent = 'Getting a code…';
     const r = await pairCall({ action: 'start' });
     if (!r.code) { $('pairStart').hidden = false; $('pairMsg').textContent = 'Could not get a code: ' + (r.error || 'try again'); return; }
+    pairActive = r.code;
     $('pairCode').textContent = r.code.slice(0, 3) + '-' + r.code.slice(3);
     try { $('pairQr').innerHTML = window.GranaryQR ? GranaryQR(location.origin + location.pathname.replace(/[^/]*$/, '') + '?pair=' + r.code, 6) : ''; } catch (e) { $('pairQr').innerHTML = ''; } $('pairMsg').textContent = 'Waiting for your phone… (code lasts 10 minutes)';
     const until = Date.now() + 600000;
     const poll = async () => {
-      if (!$('authPanel').classList.contains('open')) return;                      // stop when the panel is closed
+      if (pairActive !== r.code) return;                                           // replaced or cancelled
+      if (!$('authPanel').classList.contains('open') || currentUser) { cancelPair(); return; }   // panel closed, or signed in another way
       if (Date.now() > until) { $('pairMsg').textContent = 'Code expired.'; $('pairStart').textContent = '📱 Show a new code'; $('pairStart').hidden = false; return; }
       const p = await pairCall({ action: 'poll', code: r.code });
-      if (p.token_hash) {
+      if (p.token_hash) { pairActive = '';
         $('pairMsg').textContent = 'Signing in…';
         const { error } = await granaryClient.auth.verifyOtp({ token_hash: p.token_hash, type: 'magiclink' });
         if (error) { $('pairMsg').textContent = 'Sign-in failed: ' + error.message; return; }
@@ -632,7 +638,7 @@
         const { data } = await granaryClient.auth.getSession(); if (data && data.session) { currentUser = data.session.user; updateCloudUI(); }
         return;
       }
-      if (p.expired) { $('pairMsg').textContent = 'Code expired.'; $('pairStart').textContent = '📱 Show a new code'; $('pairStart').hidden = false; return; }
+      if (p.expired) { pairActive = ''; $('pairMsg').textContent = 'Code expired.'; $('pairStart').textContent = '📱 Show a new code'; $('pairStart').hidden = false; return; }
       pairTimer = setTimeout(poll, 3000);
     };
     pairTimer = setTimeout(poll, 3000);
