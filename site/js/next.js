@@ -485,6 +485,7 @@
   updateCloudUI = function () {
     baseUpdate();
     $('signInBtn').textContent = currentUser ? 'Account and password' : 'Sign in';
+    const ptb = $('pairTvBtn'); if (ptb) ptb.style.display = currentUser ? '' : 'none';   // only a signed-in device can sign a TV in
     const id = currentUser ? currentUser.id : null;
     if (id === lastUser) return; lastUser = id;
     syncChannelsFromAccount();
@@ -512,7 +513,7 @@
       if (!error && data && data.user) currentUser = data.user;
     } catch (e) { console.warn('Granary TV: could not save channels to your account –', e.message || e); }
   }
-  NX.version = '2.0.52';
+  NX.version = '2.0.53';
   // ── Auto-update: if a newer version is published, reload past the browser's cached copy ──
   async function checkForUpdate() {
     try {
@@ -666,7 +667,7 @@
     document.querySelectorAll('.jump').forEach(b => b.onclick = () => { const hr = b.dataset.h === 'eve' ? defaultStart() : +b.dataset.h; setWindow(hr); NX.sel = null; render(); });
     $('nowBtn').onclick = () => { const d = new Date(); selected = 0; setWindow(Math.floor((d.getHours() * 60 + d.getMinutes()) / 30) / 2); NX.sel = null; renderDays(); render(); };
     $('pairStart').onclick = startPair;
-    $('pairTvBtn').onclick = () => { $('settingsPanel').classList.remove('open'); $('pairApproveMsg').textContent = currentUser ? '' : 'Sign in on this device first.'; $('pairPanel').classList.add('open'); if (NX.tv) setTimeout(() => $('pairInput').focus(), 50); };
+    $('pairTvBtn').onclick = () => { if (!currentUser) { $('settingsPanel').classList.remove('open'); openAuth(); return; } $('settingsPanel').classList.remove('open'); $('pairApproveMsg').textContent = currentUser ? '' : 'Sign in on this device first.'; $('pairPanel').classList.add('open'); if (NX.tv) setTimeout(() => $('pairInput').focus(), 50); };
     $('pairApprove').onclick = approvePair;
     $('pairInput').addEventListener('keydown', e => { if (e.key === 'Enter') approvePair(); });
     $('loadMyChannels').onclick = async () => { $('loadMyChannels').textContent = 'Loading…'; await syncChannelsFromAccount(true); $('loadMyChannels').textContent = 'Load channels from my account'; };
