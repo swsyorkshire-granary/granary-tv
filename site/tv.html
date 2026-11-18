@@ -5,7 +5,7 @@
 <link rel="manifest" href="manifest.json">
 <meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Granary TV"><meta name="apple-mobile-web-app-status-bar-style" content="default">
-<link rel="stylesheet" href="css/next.css?v=45">
+<link rel="stylesheet" href="css/next.css?v=50">
 </head><body class="nx">
 <header class="top">
   <div class="logo">Granary<i>.</i>tv</div>
@@ -47,11 +47,20 @@
     <button id="manage">Add or remove channels</button>
     <button id="refresh">Refresh listings</button>
     <button id="loadMyChannels">Load channels from my account</button>
+    <button id="pairTvBtn">Sign in a TV</button>
     <label class="setRow">Guide opens at <select id="nxHours"></select></label>
     <div class="setRow" id="skyStatus">Sky channels: checking…</div>
     <div class="setRow small" id="chSync">Channels: not checked yet</div>
   </div>
   <p class="muted small">Listings from the onTVnow public UK listings feed. <a href="classic.html" id="classicLink">Use the classic design</a> · <a href="link-test-bench.html">Link Test Bench</a></p>
+</div></div>
+
+<!-- Phone/iPad: approve a TV's sign-in code -->
+<div class="cloudPanel" id="pairPanel"><div class="cloudCard">
+  <div class="cardHead"><h2>Sign in a TV</h2><button class="close">Close</button></div>
+  <p class="muted">On the TV, open ⚙ → Sign in → <b>Sign in with your phone or iPad</b>. Type the code it shows:</p>
+  <input id="pairInput" maxlength="7" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="e.g. K7P4QX" style="font-size:1.6rem;letter-spacing:.2em;text-transform:uppercase">
+  <button id="pairApprove" class="primary">Sign the TV in</button><div id="pairApproveMsg" class="cloudMessage"></div>
 </div></div>
 
 <!-- More options for a programme or show -->
@@ -65,7 +74,11 @@
 
 <div class="cloudPanel" id="authPanel"><div class="cloudCard">
   <div class="cardHead"><h2>Granary TV account</h2><button class="close" onclick="document.getElementById('authPanel').classList.remove('open')">Close</button></div>
-  <p class="muted">Use the same email and password on the iPad, phone and TV.</p>
+  <div class="pairBox"><button id="pairStart" class="primary">📱 Sign in with your phone or iPad</button>
+    <div id="pairShow" hidden><div class="pairCode" id="pairCode">······</div>
+    <p class="muted">On your phone or iPad (already signed in to Granary TV), open ⚙ Settings → <b>Sign in a TV</b> and type this code.</p>
+    <div id="pairMsg" class="cloudMessage"></div></div></div>
+  <p class="muted">Or use the same email and password as on your other devices.</p>
   <p class="muted small"><b>New to Granary TV?</b> Enter your email and choose <b>Email me a sign-in link</b> – that creates your account. Once you’re in, set a password from here.</p>
   <input id="authEmail" type="email" autocomplete="email" placeholder="Your email address">
   <input id="authPassword" type="password" autocomplete="current-password" placeholder="Password (at least 8 characters)">
@@ -92,6 +105,6 @@
 <script src="js/library.js?v=30"></script>
 <script src="js/guide.js?v=30"></script>
 <script>window.GRANARY_FORCE_TV=true</script>
-<script src="js/next.js?v=49"></script>
+<script src="js/next.js?v=50"></script>
 <script src="js/tvnav.js?v=30"></script>
 </body></html>

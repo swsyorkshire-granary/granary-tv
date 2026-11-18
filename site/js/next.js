@@ -512,7 +512,7 @@
       if (!error && data && data.user) currentUser = data.user;
     } catch (e) { console.warn('Granary TV: could not save channels to your account –', e.message || e); }
   }
-  NX.version = '2.0.49';
+  NX.version = '2.0.50';
   function chStatus(t) { NX.chStatus = t + ' · ' + new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }); const el = $('chSync'); if (el) el.textContent = 'Version ' + NX.version + ' · Channels: ' + NX.chStatus; }
   async function syncChannelsFromAccount(force) {
     if (!currentUser) { chStatus('not signed in, so not synced'); return; }
@@ -590,6 +590,46 @@
     el.classList.toggle('warn', !s.ok);
   }
 
+  // ── Sign a TV in from a phone/iPad (tv-pair helper) ──
+  const PAIR_URL = GRANARY_SUPABASE_URL + '/functions/v1/tv-pair';
+  const pairCall = async (body, token) => { const r = await fetch(PAIR_URL, { method: 'POST', headers: Object.assign({ 'Content-Type': 'application/json' }, token ? { Authorization: 'Bearer ' + token } : {}), body: JSON.stringify(body) }); return r.json().catch(() => ({ error: 'No reply' })); };
+  let pairTimer = null;
+  async function startPair() {
+    clearTimeout(pairTimer); $('pairShow').hidden = false; $('pairCode').textContent = '······'; $('pairMsg').textContent = 'Getting a code…';
+    const r = await pairCall({ action: 'start' });
+    if (!r.code) { $('pairMsg').textContent = 'Could not get a code: ' + (r.error || 'try again'); return; }
+    $('pairCode').textContent = r.code.slice(0, 3) + '-' + r.code.slice(3); $('pairMsg').textContent = 'Waiting for your phone… (code lasts 10 minutes)';
+    const until = Date.now() + 600000;
+    const poll = async () => {
+      if (!$('authPanel').classList.contains('open')) return;                      // stop when the panel is closed
+      if (Date.now() > until) { $('pairMsg').textContent = 'Code expired.'; $('pairStart').textContent = '📱 Show a new code'; return; }
+      const p = await pairCall({ action: 'poll', code: r.code });
+      if (p.token_hash) {
+        $('pairMsg').textContent = 'Signing in…';
+        const { error } = await granaryClient.auth.verifyOtp({ token_hash: p.token_hash, type: 'magiclink' });
+        if (error) { $('pairMsg').textContent = 'Sign-in failed: ' + error.message; return; }
+        $('pairMsg').textContent = '✓ Signed in'; setTimeout(() => $('authPanel').classList.remove('open'), 900);
+        const { data } = await granaryClient.auth.getSession(); if (data && data.session) { currentUser = data.session.user; updateCloudUI(); }
+        return;
+      }
+      if (p.expired) { $('pairMsg').textContent = 'Code expired.'; $('pairStart').textContent = '📱 Show a new code'; return; }
+      pairTimer = setTimeout(poll, 3000);
+    };
+    pairTimer = setTimeout(poll, 3000);
+  }
+  async function approvePair() {
+    const msg = $('pairApproveMsg'), code = $('pairInput').value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+    if (!currentUser) { msg.textContent = 'Sign in on this device first.'; return; }
+    if (code.length !== 6) { msg.textContent = 'The code is 6 letters and numbers.'; return; }
+    msg.textContent = 'Signing the TV in…';
+    const { data } = await granaryClient.auth.getSession();
+    const r = await pairCall({ action: 'approve', code }, data && data.session && data.session.access_token);
+    msg.textContent = r.ok ? '✓ Done – the TV will sign in within a few seconds.' : (r.error || 'That didn’t work – try a new code.');
+    if (r.ok) $('pairInput').value = '';
+  }
+  const baseOpenAuth = openAuth;
+  openAuth = function () { baseOpenAuth(); $('pairShow').hidden = true; $('pairStart').textContent = '📱 Sign in with your phone or iPad'; if (NX.tv && !currentUser) startPair(); };
+
   // ── Wiring ──────────────────────────────────────────────────
   document.addEventListener('DOMContentLoaded', () => {
     $('tabGuide').onclick = () => showTab('guide');
@@ -603,6 +643,10 @@
     $('later').onclick = () => { setWindow(startHour + 1); render(); };
     document.querySelectorAll('.jump').forEach(b => b.onclick = () => { const hr = b.dataset.h === 'eve' ? defaultStart() : +b.dataset.h; setWindow(hr); NX.sel = null; render(); });
     $('nowBtn').onclick = () => { const d = new Date(); selected = 0; setWindow(Math.floor((d.getHours() * 60 + d.getMinutes()) / 30) / 2); NX.sel = null; renderDays(); render(); };
+    $('pairStart').onclick = startPair;
+    $('pairTvBtn').onclick = () => { $('settingsPanel').classList.remove('open'); $('pairApproveMsg').textContent = currentUser ? '' : 'Sign in on this device first.'; $('pairPanel').classList.add('open'); setTimeout(() => $('pairInput').focus(), 50); };
+    $('pairApprove').onclick = approvePair;
+    $('pairInput').addEventListener('keydown', e => { if (e.key === 'Enter') approvePair(); });
     $('loadMyChannels').onclick = async () => { $('loadMyChannels').textContent = 'Loading…'; await syncChannelsFromAccount(true); $('loadMyChannels').textContent = 'Load channels from my account'; };
     const hs = $('nxHours'); for (let hr = 6; hr <= 21; hr++) hs.add(new Option(pad(hr) + ':00', hr)); hs.value = String(defaultStart());
     hs.onchange = () => { localStorage.setItem(WIN_KEY, hs.value); setWindow(+hs.value); render(); };
