@@ -63,7 +63,7 @@ check(page.errs.length === 0, 'no page errors ' + page.errs.join(' | '));
 page = await open('index.html', { width: 390, height: 844 }, { fn: r => { window.__md = { granary_channels: r, granary_channels_at: Date.now() - 60000 }; localStorage.setItem('agrid-channel-ids', JSON.stringify([{ id: 3, display: 'ITV1', sourceName: 'ITV1 Calendar HD' }])); localStorage.setItem('granary-channels-at', String(Date.now())); localStorage.setItem('granary-sky-added', '1'); }, arg: remote });
 await page.waitForTimeout(1500);
 await page.click('#nxSettings');
-check(/Version 2\.0\.49 · Channels: up to date/.test(await page.textContent('#chSync')), 'Settings shows version and sync status: ' + await page.textContent('#chSync'));
+check(/Version 2\.0\.50 · Channels: up to date/.test(await page.textContent('#chSync')), 'Settings shows version and sync status: ' + await page.textContent('#chSync'));
 await page.click('#loadMyChannels'); await page.waitForTimeout(1500);
 check(/loaded \d+ from your account/.test(await page.textContent('#chSync')), 'button reports loading: ' + await page.textContent('#chSync'));
 await page.locator('#settingsPanel .close').click();
