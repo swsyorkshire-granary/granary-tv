@@ -43,8 +43,10 @@ import java.util.Locale;
  * The guide itself lives on the website, so website updates appear here without reinstalling.
  */
 public class MainActivity extends Activity {
-    static final String SITE_HOST = "neon-empanada-981548.netlify.app";
-    static final String START_URL = "https://" + SITE_HOST + "/tv.html";
+    // Hosted on GitHub Pages (moved from Netlify on 18 Nov 2026)
+    static final String SITE_HOST = "swsyorkshire-granary.github.io";
+    static final String SITE_BASE = "https://" + SITE_HOST + "/granary-tv";
+    static final String START_URL = SITE_BASE + "/tv.html";
 
     /** host fragment -> words that appear in the installed app's name on Fire TV */
     static final String[][] SERVICES = {
@@ -73,7 +75,7 @@ public class MainActivity extends Activity {
     void loadConfig() {
         new Thread(() -> {
             try {
-                HttpURLConnection c = (HttpURLConnection) new URL("https://" + SITE_HOST + "/app-config.json?t=" + System.currentTimeMillis()).openConnection();
+                HttpURLConnection c = (HttpURLConnection) new URL(SITE_BASE + "/app-config.json?t=" + System.currentTimeMillis()).openConnection();
                 c.setConnectTimeout(5000); c.setReadTimeout(5000);
                 StringBuilder sb = new StringBuilder();
                 try (BufferedReader r = new BufferedReader(new InputStreamReader(c.getInputStream()))) { String l; while ((l = r.readLine()) != null) sb.append(l); }
