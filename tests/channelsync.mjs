@@ -28,7 +28,7 @@ async function open(url, vp, init) {
   await page.route('https://api.open-meteo.com/**', r => r.fulfill({ contentType: 'application/json', headers: { 'Access-Control-Allow-Origin': '*' }, body: JSON.stringify({ current: { temperature_2m: 7.4, weather_code: 3 }, daily: { temperature_2m_max: [9], temperature_2m_min: [3] } }) }));
   await page.route('https://api.tvmaze.com/**', r => r.fulfill({ contentType: 'application/json', body: '[]' }));
   await page.route('**/functions/v1/find-links', r => r.fulfill({ contentType: 'application/json', headers: { 'Access-Control-Allow-Origin': '*' }, body: '{"best":{}}' }));
-  await page.route('https://www.ontvnow.co.uk/**', r => { const u = new URL(r.request().url()); if (u.pathname.endsWith('/channels')) return r.fulfill({ contentType: 'application/json', body: JSON.stringify({ data: [{ id: 1, name: 'BBC One Yorkshire HD' }, { id: 2, name: 'BBC Two HD' }, { id: 3, name: 'ITV1 Calendar HD' }, { id: 12, name: 'Channel 4 North HD' }, { id: 13, name: '5 HD' }] }) });
+  await page.route('https://www.ontvnow.co.uk/**', r => { const u = new URL(r.request().url()); if (u.pathname.endsWith('/channels')) return new Promise(res => setTimeout(res, 900)).then(() => r.fulfill({ contentType: 'application/json', body: JSON.stringify({ data: [{ id: 1, name: 'BBC One Yorkshire HD' }, { id: 2, name: 'BBC Two HD' }, { id: 3, name: 'ITV1 Calendar HD' }, { id: 12, name: 'Channel 4 North HD' }, { id: 13, name: '5 HD' }] }) }));
     const id = Number(u.searchParams.get('channel_id')), out = [];
     for (let d = -7; d < 7; d++) for (let h = 6; h < 24; h++) out.push({ title: id === 3 && h === 20 ? 'Vera' : id === 2 && h === 21 ? 'Coast' : 'Show ' + id + '-' + h, start: at(d, h), end: at(d, h + 1), description: 'About show ' + h });
     const f0 = new Date(u.searchParams.get('from')), f1 = new Date(u.searchParams.get('to'));
@@ -51,7 +51,7 @@ await page.waitForTimeout(1800);
 badges = await page.$$eval('.gr .badge', b => b.map(x => x.textContent));
 const pushed = await page.evaluate(() => (window.__updates || []).map(u => (u.data.granary_channels || []).map(c => c.display).join('+')));
 check(badges.includes('ITV1') && badges.includes('ATL'), 'lists combined on first sync: ' + badges.join(','));
-check(pushed.some(p => /ITV1/.test(p) && /Sky Atlantic/.test(p)), 'combined list saved to the account: ' + pushed.join(' | '));
+check(pushed.length > 0 && pushed.every(p => p.length) && pushed.some(p => /ITV1/.test(p) && /Sky Atlantic/.test(p)), 'combined list saved, never an empty one: ' + pushed.join(' | '));
 // 3. Removing a channel saves the change to the account
 await page.click('#nxSettings'); await page.click('#manage');
 await page.locator('#chips button', { hasText: 'Sky Witness' }).first().click().catch(() => {});

@@ -503,21 +503,27 @@
   };
   async function pushChannels() {
     if (!currentUser) return;
-    const list = channels.map(c => ({ id: c.id, display: c.display, sourceName: c.sourceName }));
+    let src = channels; if (!src.length) try { src = JSON.parse(localStorage.getItem('agrid-channel-ids') || '[]') || []; } catch (e) { src = []; }
+    if (!src.length) return;                                   // never save an empty list over the account's
+    const list = src.map(c => ({ id: c.id, display: c.display, sourceName: c.sourceName }));
     try {
       const { data, error } = await granaryClient.auth.updateUser({ data: { granary_channels: list, granary_channels_at: Number(localStorage.getItem(CH_AT) || Date.now()) } });
       if (!error && data && data.user) currentUser = data.user;
     } catch (e) { console.warn('Granary TV: could not save channels to your account –', e.message || e); }
   }
-  function syncChannelsFromAccount() {
+  async function syncChannelsFromAccount() {
     if (!currentUser) return;
+    // the saved sign-in can hold old account details: ask for the latest before comparing
+    try { const { data } = await granaryClient.auth.getUser(); if (data && data.user) currentUser = data.user; } catch (e) {}
     const md = currentUser.user_metadata || {}, remote = md.granary_channels, remoteAt = Number(md.granary_channels_at || 0);
     const localAt = Number(localStorage.getItem(CH_AT) || 0);
     const keyOf = c => c.id != null ? 'id:' + c.id : 'n:' + norm(c.display);
     if (Array.isArray(remote) && remote.length && remoteAt > localAt) {
       // First sync on this device: combine both lists so nothing is lost; after that the latest change wins.
       let list = remote;
-      if (!localAt && channels.length) { const seen = new Set(remote.map(keyOf)); list = remote.concat(channels.filter(c => !seen.has(keyOf(c)))); }
+      // use this device's saved list even if the guide hasn't finished loading it yet
+      let mine = channels.length ? channels : []; try { if (!mine.length) mine = JSON.parse(localStorage.getItem('agrid-channel-ids') || '[]') || []; } catch (e) {}
+      if (!localAt && mine.length) { const seen = new Set(remote.map(keyOf)); list = remote.concat(mine.filter(c => !seen.has(keyOf(c)))); }
       const merged = list.length > remote.length;
       adopting = true;
       try { localStorage.setItem('agrid-channel-ids', JSON.stringify(list)); localStorage.setItem(CH_AT, String(merged ? Date.now() : remoteAt)); localStorage.setItem('granary-sky-added', '1'); } catch (e) {}
