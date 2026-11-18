@@ -530,7 +530,8 @@
       if (directory.length) { channels = list.map(c => Object.assign({}, c)); if (typeof sortChannels === 'function') sortChannels(); loadListings(); }
       adopting = false;
       if (merged) pushChannels();
-    } else if ((!Array.isArray(remote) || !remote.length || localAt > remoteAt) && channels.length) {
+    } else if (!Array.isArray(remote) || !remote.length) {
+      // Nothing on the account yet: save this device's list once. Otherwise only an actual add/remove saves.
       if (!localAt) try { localStorage.setItem(CH_AT, String(Date.now())); } catch (e) {}
       pushChannels();
     }
