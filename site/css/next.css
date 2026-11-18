@@ -179,6 +179,14 @@ html.tv .tile{font-size:1rem}
   .top{flex-wrap:wrap;gap:.6rem .8rem;padding:.8rem 1rem .6rem}
   .days{order:5;flex-basis:100%}
   .clock{display:none}
+  /* one tidy header row on phones: logo, tabs, weather, settings */
+  .top{gap:.5rem .55rem}
+  .logo{font-size:1.05rem!important}
+  .tabs{padding:2px}.tabs button{padding:.35rem .7rem!important;font-size:.85rem}
+  .dials{margin-left:auto;gap:.4rem}
+  .dial,.iconBtn{width:2.15rem;height:2.15rem}
+  .dial.temp span{font-size:.78rem}
+  .iconBtn{font-size:1.05rem}
   main{padding:0 .8rem 6rem}
   .grid{padding:.4rem .5rem .7rem;border-radius:1rem}
   .hrs{margin-left:2.9rem}
