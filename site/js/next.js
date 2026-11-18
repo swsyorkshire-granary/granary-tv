@@ -487,9 +487,50 @@
     $('signInBtn').textContent = currentUser ? 'Account and password' : 'Sign in';
     const id = currentUser ? currentUser.id : null;
     if (id === lastUser) return; lastUser = id;
+    syncChannelsFromAccount();
     NX.libLoaded = false;
     openLibrary();
   };
+  // ── Channel list follows your account (iPad, phone and TV share it) ──
+  const CH_AT = 'granary-channels-at';
+  let chPush = null, adopting = false;
+  const baseSave = save;
+  save = function () {
+    baseSave();
+    if (adopting) return;
+    try { localStorage.setItem(CH_AT, String(Date.now())); } catch (e) {}
+    clearTimeout(chPush); chPush = setTimeout(pushChannels, 1200);
+  };
+  async function pushChannels() {
+    if (!currentUser) return;
+    const list = channels.map(c => ({ id: c.id, display: c.display, sourceName: c.sourceName }));
+    try {
+      const { data, error } = await granaryClient.auth.updateUser({ data: { granary_channels: list, granary_channels_at: Number(localStorage.getItem(CH_AT) || Date.now()) } });
+      if (!error && data && data.user) currentUser = data.user;
+    } catch (e) { console.warn('Granary TV: could not save channels to your account –', e.message || e); }
+  }
+  function syncChannelsFromAccount() {
+    if (!currentUser) return;
+    const md = currentUser.user_metadata || {}, remote = md.granary_channels, remoteAt = Number(md.granary_channels_at || 0);
+    const localAt = Number(localStorage.getItem(CH_AT) || 0);
+    const keyOf = c => c.id != null ? 'id:' + c.id : 'n:' + norm(c.display);
+    if (Array.isArray(remote) && remote.length && remoteAt > localAt) {
+      // First sync on this device: combine both lists so nothing is lost; after that the latest change wins.
+      let list = remote;
+      if (!localAt && channels.length) { const seen = new Set(remote.map(keyOf)); list = remote.concat(channels.filter(c => !seen.has(keyOf(c)))); }
+      const merged = list.length > remote.length;
+      adopting = true;
+      try { localStorage.setItem('agrid-channel-ids', JSON.stringify(list)); localStorage.setItem(CH_AT, String(merged ? Date.now() : remoteAt)); localStorage.setItem('granary-sky-added', '1'); } catch (e) {}
+      if (directory.length) { channels = list.map(c => Object.assign({}, c)); if (typeof sortChannels === 'function') sortChannels(); loadListings(); }
+      adopting = false;
+      if (merged) pushChannels();
+    } else if ((!Array.isArray(remote) || !remote.length || localAt > remoteAt) && channels.length) {
+      if (!localAt) try { localStorage.setItem(CH_AT, String(Date.now())); } catch (e) {}
+      pushChannels();
+    }
+  }
+  NX.syncChannelsFromAccount = syncChannelsFromAccount;
+
   // Series links: refresh the library after each background check.
   const baseSeries = granarySeriesBackground;
   granarySeriesBackground = async function () { if (weekOffset !== 0) return;   // only this week's listings say what's coming up
