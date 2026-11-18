@@ -5,7 +5,7 @@
 <link rel="manifest" href="manifest.json">
 <meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Granary TV"><meta name="apple-mobile-web-app-status-bar-style" content="default">
-<link rel="stylesheet" href="css/next.css?v=51">
+<link rel="stylesheet" href="css/next.css?v=56">
 </head><body class="nx">
 <header class="top">
   <div class="logo">Granary<i>.</i>tv</div>
@@ -58,9 +58,12 @@
 <!-- Phone/iPad: approve a TV's sign-in code -->
 <div class="cloudPanel" id="pairPanel"><div class="cloudCard">
   <div class="cardHead"><h2>Sign in a TV</h2><button class="close">Close</button></div>
-  <p class="muted">On the TV, open ⚙ → Sign in → <b>Sign in with your phone or iPad</b>. Type the code it shows:</p>
+  <div id="pairAsk" hidden><p><b>A TV in your home wants to sign in to your Granary TV.</b> It should be showing this code:</p>
+    <div class="pairCode" id="pairAskCode"></div>
+    <button id="pairAllow" class="primary">Allow this TV</button><button id="pairNo">Not now</button></div>
+  <div id="pairManual"><p class="muted">On the TV, open ⚙ → <b>Sign in</b>. Type the code it shows:</p>
   <input id="pairInput" maxlength="7" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="Code from the TV" style="font-size:1.6rem;letter-spacing:.2em;text-transform:uppercase">
-  <button id="pairApprove" class="primary">Sign the TV in</button><div id="pairApproveMsg" class="cloudMessage"></div>
+  <button id="pairApprove" class="primary">Sign the TV in</button></div><div id="pairApproveMsg" class="cloudMessage"></div>
 </div></div>
 
 <!-- More options for a programme or show -->
@@ -75,8 +78,8 @@
 <div class="cloudPanel" id="authPanel"><div class="cloudCard">
   <div class="cardHead"><h2>Granary TV account</h2><button class="close" onclick="document.getElementById('authPanel').classList.remove('open')">Close</button></div>
   <div class="pairBox"><button id="pairStart" class="primary">📱 Sign in with your phone or iPad</button>
-    <div id="pairShow" hidden><div class="pairCode" id="pairCode">······</div>
-    <p class="muted">On your phone or iPad (already signed in to Granary TV), open ⚙ Settings → <b>Sign in a TV</b> and type this code.</p>
+    <div id="pairShow" hidden><div class="pairRow"><div id="pairQr" class="pairQr"></div><div><div class="pairCode" id="pairCode">······</div>
+    <p class="muted"><b>Point your phone’s camera at the square</b> and tap the link – or just open Granary TV on your phone. Either way, your phone asks you to allow this TV.</p></div></div>
     <div id="pairMsg" class="cloudMessage"></div></div></div>
   <p class="muted">Or use the same email and password as on your other devices.</p>
   <p class="muted small"><b>New to Granary TV?</b> Enter your email and choose <b>Email me a sign-in link</b> – that creates your account. Once you’re in, set a password from here.</p>
@@ -104,6 +107,7 @@
 <script src="js/sky.js?v=39"></script>
 <script src="js/library.js?v=30"></script>
 <script src="js/guide.js?v=30"></script>
-<script src="js/next.js?v=53"></script>
+<script src="js/qr.js?v=1"></script>
+<script src="js/next.js?v=56"></script>
 <script src="js/tvnav.js?v=30"></script>
 </body></html>

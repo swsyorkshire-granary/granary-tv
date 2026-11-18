@@ -26,6 +26,7 @@ async function open(url, vp, signedOut) {
   if (signedOut) await page.addInitScript(() => { window.__signedOut = true; });
   await page.route('**/functions/v1/tv-pair', async r => { const b = JSON.parse(r.request().postData() || '{}'); const H = { 'Access-Control-Allow-Origin': '*' };
     const send = o => r.fulfill({ contentType: 'application/json', headers: H, body: JSON.stringify(o) });
+    if (b.action === 'nearby') return send({ codes: Object.keys(pairs).filter(c => !pairs[c].token) });
     if (b.action === 'start') { const code = 'K7P4Q' + (++pairN); pairs[code] = {}; return send({ code }); }
     const p = pairs[b.code]; if (!p) return send({ expired: true });
     if (b.action === 'poll') { if (!p.token) return send({ waiting: true }); delete pairs[b.code]; return send({ email: 't@example.com', token_hash: p.token }); }
@@ -48,16 +49,30 @@ async function open(url, vp, signedOut) {
 }
 // TV (signed out) shows a code; phone (signed in) approves it; TV signs itself in
 const tv = await open('tv.html', { width: 1920, height: 1080 }, true);
-const phone = await open('index.html', { width: 390, height: 844 });
 await tv.evaluate(() => openAuth()); await tv.waitForTimeout(500);
+const phone = await open('index.html', { width: 390, height: 844 });
 const shown = (await tv.textContent('#pairCode')).trim();
 check(/^K7P-4Q\d$/.test(shown), 'TV shows a sign-in code automatically: ' + shown);
-await phone.click('#nxSettings'); await phone.click('#pairTvBtn');
-await phone.fill('#pairInput', shown.toLowerCase()); await phone.click('#pairApprove'); await phone.waitForTimeout(400);
+await phone.clock.runFor(5000); await phone.waitForTimeout(600);
+check(await phone.isVisible('#pairAllow'), 'phone pops up "Allow this TV?" by itself');
+check((await phone.textContent('#pairAskCode')).trim() === shown, 'popup shows the same code as the TV');
+await phone.click('#pairAllow'); await phone.waitForTimeout(500);
 check(/Done/.test(await phone.textContent('#pairApproveMsg')), 'phone approves the code: ' + await phone.textContent('#pairApproveMsg'));
 await tv.clock.runFor(3500); await tv.waitForTimeout(800);
 const v = await tv.evaluate(() => window.__verified);
 check(v && v.token_hash === 'hash-' + shown.replace('-', '') && v.type === 'magiclink', 'TV signs itself in with the one-time token: ' + JSON.stringify(v));
 check(/Signed in/.test(await tv.textContent('#pairMsg')), 'TV says signed in');
+check(await tv.$('#pairQr svg') !== null, 'TV shows a QR code');
+// QR route: a second TV code, phone opens the scanned link
+const tv2 = await open('tv.html', { width: 1920, height: 1080 }, true);
+await tv2.evaluate(() => openAuth()); await tv2.waitForTimeout(500);
+await tv2.screenshot({ path: '/tmp/tv-pair.png' });
+const c2 = (await tv2.textContent('#pairCode')).trim().replace('-', '');
+const ph2 = await open('index.html?pair=' + c2, { width: 390, height: 844 });
+await ph2.clock.runFor(2500); await ph2.waitForTimeout(500);
+check((await ph2.textContent('#pairAskCode')).trim().replace('-', '') === c2 && await ph2.isVisible('#pairAllow'), 'scanning the QR asks to allow that TV');
+await ph2.click('#pairAllow'); await ph2.waitForTimeout(400); await tv2.clock.runFor(3500); await tv2.waitForTimeout(800);
+check(/Signed in/.test(await tv2.textContent('#pairMsg')), 'TV signs in after QR approval');
+check(!/pair=/.test(ph2.url()), 'code removed from the phone address');
 check(tv.errs.length === 0 && phone.errs.length === 0, 'no page errors ' + tv.errs.concat(phone.errs).join(' | '));
 await b.close(); server.close(); console.log(fail ? fail + ' FAILED' : 'ALL PASSED'); process.exit(fail ? 1 : 0);
