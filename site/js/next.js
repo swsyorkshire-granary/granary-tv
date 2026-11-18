@@ -512,7 +512,7 @@
       if (!error && data && data.user) currentUser = data.user;
     } catch (e) { console.warn('Granary TV: could not save channels to your account –', e.message || e); }
   }
-  NX.version = '2.0.50';
+  NX.version = '2.0.51';
   function chStatus(t) { NX.chStatus = t + ' · ' + new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }); const el = $('chSync'); if (el) el.textContent = 'Version ' + NX.version + ' · Channels: ' + NX.chStatus; }
   async function syncChannelsFromAccount(force) {
     if (!currentUser) { chStatus('not signed in, so not synced'); return; }
@@ -592,7 +592,12 @@
 
   // ── Sign a TV in from a phone/iPad (tv-pair helper) ──
   const PAIR_URL = GRANARY_SUPABASE_URL + '/functions/v1/tv-pair';
-  const pairCall = async (body, token) => { const r = await fetch(PAIR_URL, { method: 'POST', headers: Object.assign({ 'Content-Type': 'application/json' }, token ? { Authorization: 'Bearer ' + token } : {}), body: JSON.stringify(body) }); return r.json().catch(() => ({ error: 'No reply' })); };
+  const pairCall = async (body, token) => {
+    const ctl = window.AbortController ? new AbortController() : null; const t = setTimeout(() => ctl && ctl.abort(), 15000);
+    try { const r = await fetch(PAIR_URL, { method: 'POST', signal: ctl && ctl.signal, headers: Object.assign({ 'Content-Type': 'application/json' }, token ? { Authorization: 'Bearer ' + token } : {}), body: JSON.stringify(body) }); return await r.json().catch(() => ({ error: 'No reply from Granary (' + r.status + ')' })); }
+    catch (e) { return { error: e && e.name === 'AbortError' ? 'No reply after 15 seconds – check the connection and try again.' : 'Could not reach Granary: ' + (e && e.message || e) }; }
+    finally { clearTimeout(t); }
+  };
   let pairTimer = null;
   async function startPair() {
     clearTimeout(pairTimer); $('pairShow').hidden = false; $('pairCode').textContent = '······'; $('pairMsg').textContent = 'Getting a code…';
@@ -621,11 +626,15 @@
     const msg = $('pairApproveMsg'), code = $('pairInput').value.toUpperCase().replace(/[^A-Z0-9]/g, '');
     if (!currentUser) { msg.textContent = 'Sign in on this device first.'; return; }
     if (code.length !== 6) { msg.textContent = 'The code is 6 letters and numbers.'; return; }
+    const btn = $('pairApprove'); if (btn.disabled) return; btn.disabled = true; $('pairInput').blur();
     msg.textContent = 'Signing the TV in…';
-    const { data } = await granaryClient.auth.getSession();
-    const r = await pairCall({ action: 'approve', code }, data && data.session && data.session.access_token);
-    msg.textContent = r.ok ? '✓ Done – the TV will sign in within a few seconds.' : (r.error || 'That didn’t work – try a new code.');
-    if (r.ok) $('pairInput').value = '';
+    try {
+      let token = null; try { const { data } = await Promise.race([granaryClient.auth.getSession(), new Promise((_, no) => setTimeout(() => no(new Error('timeout')), 8000))]); token = data && data.session && data.session.access_token; } catch (e) {}
+      if (!token) { msg.textContent = 'This device’s sign-in has lapsed – sign in here again, then retry.'; return; }
+      const r = await pairCall({ action: 'approve', code }, token);
+      msg.textContent = r.ok ? '✓ Done – the TV will sign in within a few seconds.' : (r.error || 'That didn’t work – try a new code.');
+      if (r.ok) $('pairInput').value = '';
+    } finally { btn.disabled = false; }
   }
   const baseOpenAuth = openAuth;
   openAuth = function () { baseOpenAuth(); $('pairShow').hidden = true; $('pairStart').textContent = '📱 Sign in with your phone or iPad'; if (NX.tv && !currentUser) startPair(); };
@@ -644,7 +653,7 @@
     document.querySelectorAll('.jump').forEach(b => b.onclick = () => { const hr = b.dataset.h === 'eve' ? defaultStart() : +b.dataset.h; setWindow(hr); NX.sel = null; render(); });
     $('nowBtn').onclick = () => { const d = new Date(); selected = 0; setWindow(Math.floor((d.getHours() * 60 + d.getMinutes()) / 30) / 2); NX.sel = null; renderDays(); render(); };
     $('pairStart').onclick = startPair;
-    $('pairTvBtn').onclick = () => { $('settingsPanel').classList.remove('open'); $('pairApproveMsg').textContent = currentUser ? '' : 'Sign in on this device first.'; $('pairPanel').classList.add('open'); setTimeout(() => $('pairInput').focus(), 50); };
+    $('pairTvBtn').onclick = () => { $('settingsPanel').classList.remove('open'); $('pairApproveMsg').textContent = currentUser ? '' : 'Sign in on this device first.'; $('pairPanel').classList.add('open'); if (NX.tv) setTimeout(() => $('pairInput').focus(), 50); };
     $('pairApprove').onclick = approvePair;
     $('pairInput').addEventListener('keydown', e => { if (e.key === 'Enter') approvePair(); });
     $('loadMyChannels').onclick = async () => { $('loadMyChannels').textContent = 'Loading…'; await syncChannelsFromAccount(true); $('loadMyChannels').textContent = 'Load channels from my account'; };
