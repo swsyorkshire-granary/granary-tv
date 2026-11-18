@@ -1,9 +1,11 @@
 name: Publish Granary TV (GitHub Pages)
-# The live site only changes when the "live" branch is updated (with the owner's say-so).
+# Publishes whatever is on the "live" branch. The live branch is only updated with the owner's say-so.
+# (Runs from main because GitHub only lets the default branch deploy to Pages; it checks out "live".)
 on:
-  push:
-    branches: [live]
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/pages.yml', '.publish']
 permissions:
   contents: read
   pages: write
@@ -19,6 +21,8 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: live
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
