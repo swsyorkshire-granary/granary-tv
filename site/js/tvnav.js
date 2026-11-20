@@ -143,7 +143,7 @@
   // showing exactly what to search for. Channel 4 opens the programme itself, so it goes straight through.
   const DIRECT = /(^|\.)channel4\.com$/i;
   const SERVICE_NAMES = [[/bbc\.co\.uk/i, 'BBC iPlayer'], [/itv\.com/i, 'ITVX'], [/channel5\.com/i, '5'], [/nowtv\.com|sky\.com/i, 'NOW'],
-    [/amazon\.|primevideo\./i, 'Prime Video'], [/disneyplus\./i, 'Disney+'], [/netflix\./i, 'Netflix'], [/u\.co\.uk|uktv/i, 'U']];
+    [/channel4\.com/i, 'Channel 4'], [/amazon\.|primevideo\./i, 'Prime Video'], [/disneyplus\./i, 'Disney+'], [/netflix\./i, 'Netflix'], [/u\.co\.uk|uktv/i, 'U']];
   let reminder = null;
   function closeReminder() { if (!reminder) return false; clearInterval(reminder.timer); reminder.el.remove(); const back = reminder.back; reminder = null; if (back && document.contains(back)) focusEl(back); return true; }
   function showReminder(service, title, go) {
@@ -154,7 +154,9 @@
       '<div class="arSteps"></div><div class="arButtons"><button class="arGo"></button><button class="arCancel">Cancel</button></div></div>';
     el.querySelector('.arSmall').textContent = 'Opening ' + service + '…';
     el.querySelector('.arTitle').textContent = title ? 'Search for: ' + title : 'Search for the programme there';
-    el.querySelector('.arSteps').textContent = service === 'BBC iPlayer' || service === 'ITVX'
+    el.querySelector('.arSteps').textContent = LG
+      ? 'If the TV asks to open the ' + service + ' app, choose Yes. Then go to Search in the app and type the name above. (The LG apps can\'t be sent straight to a programme.)'
+      : service === 'BBC iPlayer' || service === 'ITVX'
       ? 'Choose your profile if asked, then go to Search. ' + service + ' on Fire TV won\'t open a programme directly.'
       : 'Go to Search in ' + service + ' and type the name above.';
     document.body.appendChild(el);
@@ -166,6 +168,23 @@
     setTimeout(() => focusEl(btn), 30);
   }
   window.granaryShowReminder = showReminder; // for tests
+  // LG's own browser: the services' websites won't play there, and LG's apps can't be sent to a programme,
+  // so show what to search for, then let the TV offer its app.
+  const LG = !window.GranaryApp && /web0s|webos|netcast/i.test(navigator.userAgent);
+  let lgPass = false;
+  document.addEventListener('click', e => {
+    if (!LG || lgPass) return;
+    const a = e.target.closest && e.target.closest('a.primaryProvider, a.providerLookup, a.watchLookup, a.providerExtra, a.watchLive');
+    if (!a) return;
+    const card = a.closest('.libraryRow, .modal, [data-title]');
+    const t = (a.dataset.title || (card && (card.querySelector('.libraryTitle, #modalTitle') || {}).textContent) || (document.querySelector('#panel h1, #panel h2') || {}).textContent || '').trim();
+    let host = ''; try { host = new URL(a.href).hostname; } catch (err) {}
+    const label = a.textContent || '';
+    const svc = (SERVICE_NAMES.find(([re]) => re.test(host)) || [null, ''])[1] || (/\bChannel 4\b/.test(label) ? 'Channel 4' : '');
+    if (!svc) return;                                       // not a streaming service link: open normally
+    e.preventDefault(); e.stopPropagation();
+    showReminder(svc, t, () => { lgPass = true; try { a.click(); } finally { lgPass = false; } });
+  }, true);
   document.addEventListener('click', e => {
     const a = e.target.closest && e.target.closest('a.primaryProvider, a.providerLookup, a.watchLookup, a.providerExtra');
     if (!a || !window.GranaryApp || typeof window.GranaryApp.openWithTitle !== 'function') return;

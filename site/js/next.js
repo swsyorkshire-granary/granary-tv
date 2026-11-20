@@ -515,7 +515,7 @@
       if (!error && data && data.user) currentUser = data.user;
     } catch (e) { console.warn('Granary TV: could not save channels to your account –', e.message || e); }
   }
-  NX.version = '2.0.61';
+  NX.version = '2.0.62';
   // ── Full screen in a TV's own browser (LG webOS etc.): hides the address bar ──
   const isWebOS = /web0s|webos|netcast/i.test(navigator.userAgent);
   const fsEl = () => document.fullscreenElement || document.webkitFullscreenElement;

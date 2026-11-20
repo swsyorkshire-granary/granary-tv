@@ -81,6 +81,18 @@ await web.click('#nxKeys [data-c=yellow]'); await web.waitForTimeout(300);
 check(await web.isVisible('#libraryView'), 'clicking the yellow key opens Library');
 await web.click('#nxKeys [data-c=blue]'); await web.waitForTimeout(300);
 await web.screenshot({ path: '/tmp/lgkeys.png' });
+// LG: tapping a service link shows the 'search for' card first
+await web.evaluate(() => document.querySelectorAll('#nxGrid .tile').forEach(t => { if (/Vera/.test(t.textContent)) t.click(); }));
+await web.waitForTimeout(500);
+const link = await web.$('#panel a.primaryProvider');
+if (link) {
+  const pop = web.context().waitForEvent('page', { timeout: 8000 }).catch(() => null);
+  await link.click(); await web.waitForTimeout(300);
+  const txt = await web.textContent('.appReminderCard').catch(() => '');
+  check(/Search for: Vera/.test(txt) && /choose Yes/.test(txt), 'LG shows what to search for: ' + txt.slice(0, 90));
+  await web.click('.arGo');
+  check(!!(await pop), 'then opens the service link');
+} else check(false, 'no service link found in panel');
 check(web.errs.length === 0, 'no LG errors ' + web.errs.join('|'));
 check(lg.errs.length === 0, 'no errors ' + lg.errs.join('|'));
 await b.close(); server.close(); console.log(fail ? fail + ' FAILED' : 'ALL PASSED'); process.exit(fail ? 1 : 0);
