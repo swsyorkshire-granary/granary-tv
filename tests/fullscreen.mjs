@@ -70,5 +70,9 @@ check(await lg.evaluate(() => $('settingsPanel').classList.contains('open')), 'R
 check(await lg.isVisible('.nxTvOnly'), 'Settings lists the colour buttons');
 await key(403); await lg.waitForTimeout(200);
 check(!(await lg.evaluate(() => $('settingsPanel').classList.contains('open'))), 'Red again closes Settings');
+await lg.hover('#nowBtn'); await lg.waitForTimeout(100);
+check(await lg.evaluate(() => document.activeElement.id) === 'nowBtn', 'pointer resting on a button focuses it');
+await lg.keyboard.press('ArrowLeft'); await lg.waitForTimeout(150);
+check(['later','windowLabel','earlier'].includes(await lg.evaluate(() => document.activeElement.id)) || await lg.evaluate(() => document.activeElement.closest('.nxBar,#guideView') !== null), 'arrows carry on from where the pointer was: ' + await lg.evaluate(() => document.activeElement.outerHTML.slice(0,80)));
 check(lg.errs.length === 0, 'no errors ' + lg.errs.join('|'));
 await b.close(); server.close(); console.log(fail ? fail + ' FAILED' : 'ALL PASSED'); process.exit(fail ? 1 : 0);

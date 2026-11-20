@@ -20,6 +20,19 @@
     const same = focusables(layer).filter(x => x.tagName === k.tag && (x.textContent || x.getAttribute('aria-label') || x.placeholder || x.id || '').trim().slice(0, 60) === k.label);
     return same[Math.max(0, Math.min(k.n, same.length - 1))] || null;
   }
+  // Magic Remote / mouse pointer: whatever the pointer rests on becomes the focused control,
+  // so the arrow buttons carry on from there instead of from somewhere else (or nowhere).
+  const isTvLike = () => document.documentElement.classList.contains('tv') || /web0s|webos|netcast|smart-?tv|tizen/i.test(navigator.userAgent);
+  document.addEventListener('mouseover', e => {
+    if (!isTvLike()) return;
+    const el = e.target && e.target.closest && e.target.closest(FOCUSABLE);
+    if (el && el !== document.activeElement && !el.matches('input,textarea,select')) el.focus({ preventScroll: true });
+  }, true);
+  // Coming back to the page (e.g. after the browser bar had the remote): put focus back where it was
+  window.addEventListener('focus', () => { if (!isTvLike()) return; setTimeout(() => {
+    const a = document.activeElement; if (a && a !== document.body) return;
+    const layer = topLayer(), el = findKey(lastKey, layer) || focusables(layer)[0]; if (el) el.focus({ preventScroll: true });
+  }, 50); });
   document.addEventListener('focusin', e => { if (e.target && e.target !== document.body && e.target.matches && e.target.matches(FOCUSABLE)) lastKey = keyOf(e.target); }, true);
 
   function topLayer() {
