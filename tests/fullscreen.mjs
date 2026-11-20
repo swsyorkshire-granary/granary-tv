@@ -20,8 +20,8 @@ const u={id:'u1',email:'t@example.com',user_metadata:{}};window.supabase={create
 let fail = 0; const check = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); if (!c) fail++; };
 const b = await chromium.launch({ executablePath: '/usr/bin/google-chrome' });
 const pairs = {}; let pairN = 0;
-async function open(url, vp, signedOut) {
-  const ctx = await b.newContext({ viewport: vp, hasTouch: vp.width < 800 });
+async function open(url, vp, signedOut, ua) {
+  const ctx = await b.newContext(Object.assign({ viewport: vp, hasTouch: vp.width < 800 }, ua ? { userAgent: ua } : {}));
   const page = await ctx.newPage(); page.errs = []; page.on('pageerror', e => page.errs.push(String(e)));
   if (signedOut) await page.addInitScript(() => { window.__signedOut = true; });
   await page.route('**/functions/v1/tv-pair', async r => { const b = JSON.parse(r.request().postData() || '{}'); const H = { 'Access-Control-Allow-Origin': '*' };
@@ -67,12 +67,20 @@ await key(406); await lg.waitForTimeout(300);
 check(await lg.isVisible('#guideView'), 'Blue goes back to the Guide');
 await key(403); await lg.waitForTimeout(300);
 check(await lg.evaluate(() => $('settingsPanel').classList.contains('open')), 'Red opens Settings');
-check(await lg.isVisible('.nxTvOnly'), 'Settings lists the colour buttons');
 await key(403); await lg.waitForTimeout(200);
 check(!(await lg.evaluate(() => $('settingsPanel').classList.contains('open'))), 'Red again closes Settings');
 await lg.hover('#nowBtn'); await lg.waitForTimeout(100);
 check(await lg.evaluate(() => document.activeElement.id) === 'nowBtn', 'pointer resting on a button focuses it');
 await lg.keyboard.press('ArrowLeft'); await lg.waitForTimeout(150);
 check(['later','windowLabel','earlier'].includes(await lg.evaluate(() => document.activeElement.id)) || await lg.evaluate(() => document.activeElement.closest('.nxBar,#guideView') !== null), 'arrows carry on from where the pointer was: ' + await lg.evaluate(() => document.activeElement.outerHTML.slice(0,80)));
+check(!(await lg.isVisible('#nxKeys')), 'no colour key on non-LG browsers (e.g. Fire Stick)');
+const web = await open('tv.html', { width: 1920, height: 1080 }, false, 'Mozilla/5.0 (Web0S; Linux/SmartTV) AppleWebKit/537.36 Chrome/108.0 Safari/537.36 WebAppManager');
+await web.waitForTimeout(800);
+check(await web.isVisible('#nxKeys'), 'LG shows the colour-button key in the top bar');
+await web.click('#nxKeys [data-c=yellow]'); await web.waitForTimeout(300);
+check(await web.isVisible('#libraryView'), 'clicking the yellow key opens Library');
+await web.click('#nxKeys [data-c=blue]'); await web.waitForTimeout(300);
+await web.screenshot({ path: '/tmp/lgkeys.png' });
+check(web.errs.length === 0, 'no LG errors ' + web.errs.join('|'));
 check(lg.errs.length === 0, 'no errors ' + lg.errs.join('|'));
 await b.close(); server.close(); console.log(fail ? fail + ' FAILED' : 'ALL PASSED'); process.exit(fail ? 1 : 0);

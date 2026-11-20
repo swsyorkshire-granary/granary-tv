@@ -5,12 +5,14 @@
 <link rel="manifest" href="manifest.json">
 <meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Granary TV"><meta name="apple-mobile-web-app-status-bar-style" content="default">
-<link rel="stylesheet" href="css/next.css?v=59">
+<link rel="stylesheet" href="css/next.css?v=61">
 </head><body class="nx">
 <header class="top">
   <div class="logo">Granary<i>.</i>tv</div>
   <nav class="tabs" role="tablist"><button id="tabGuide" class="on" role="tab">Guide</button><button id="tabLibrary" role="tab">Library</button></nav>
   <div class="days" id="nxDays"></div>
+  <div class="keys" id="nxKeys" aria-hidden="true">
+    <span data-c="red"><i></i>Settings</span><span data-c="green"><i></i>Now</span><span data-c="yellow"><i></i>Library</span><span data-c="blue"><i></i>Guide</span></div>
   <div class="dials"><div class="dial clock" id="nxClock" title="Time"><span></span></div><div class="dial temp" id="nxTemp" title="York weather"><span>–</span></div></div>
   <button id="nxSettings" class="iconBtn" aria-label="Settings">⚙</button>
 </header>
@@ -49,7 +51,7 @@
     <button id="loadMyChannels">Load channels from my account</button>
     <button id="pairTvBtn">Sign in a TV</button>
     <button id="fullBtn" hidden>Full screen (hide the browser bar)</button>
-    <div class="setRow nxTvOnly">Remote colour buttons: <b style="color:#d33">Red</b> Settings · <b style="color:#2a2">Green</b> Now · <b style="color:#b90">Yellow</b> Library · <b style="color:#36c">Blue</b> Guide</div>
+    <div class="setRow nxKeysOnly">Remote colour buttons: <b style="color:#d33">Red</b> Settings · <b style="color:#2a2">Green</b> Now · <b style="color:#b90">Yellow</b> Library · <b style="color:#36c">Blue</b> Guide</div>
     <label class="setRow">Guide opens at <select id="nxHours"></select></label>
     <div class="setRow" id="skyStatus">Sky channels: checking…</div>
     <div class="setRow small" id="chSync">Channels: not checked yet</div>
@@ -111,6 +113,6 @@
 <script src="js/guide.js?v=30"></script>
 <script>window.GRANARY_FORCE_TV=true</script>
 <script src="js/qr.js?v=1"></script>
-<script src="js/next.js?v=60"></script>
+<script src="js/next.js?v=61"></script>
 <script src="js/tvnav.js?v=31"></script>
 </body></html>

@@ -515,7 +515,7 @@
       if (!error && data && data.user) currentUser = data.user;
     } catch (e) { console.warn('Granary TV: could not save channels to your account –', e.message || e); }
   }
-  NX.version = '2.0.60';
+  NX.version = '2.0.61';
   // ── Full screen in a TV's own browser (LG webOS etc.): hides the address bar ──
   const isWebOS = /web0s|webos|netcast/i.test(navigator.userAgent);
   const fsEl = () => document.fullscreenElement || document.webkitFullscreenElement;
@@ -533,18 +533,20 @@
   const barRoom = () => document.documentElement.classList.toggle('nxBarRoom', isWebOS && !inApp() && !fsEl());
   barRoom(); document.addEventListener('fullscreenchange', barRoom); document.addEventListener('webkitfullscreenchange', barRoom);
 
+  // Show the colour-button key on TVs whose remotes have them (not the Fire Stick)
+  document.documentElement.classList.toggle('nxColourKeys', !inApp() && /web0s|webos|netcast|tizen|smart-?tv|hbbtv/i.test(navigator.userAgent));
   // Remote colour buttons (LG / most TV remotes): Red = Settings, Green = Now, Yellow = Library, Blue = Guide
   const COLOUR = { 403: 'red', 404: 'green', 405: 'yellow', 406: 'blue', ColorF0Red: 'red', ColorF1Green: 'green', ColorF2Yellow: 'yellow', ColorF3Blue: 'blue' };
-  document.addEventListener('keydown', e => {
-    const c = COLOUR[e.key] || COLOUR[e.keyCode]; if (!c) return;
-    e.preventDefault(); goFull();
+  function colourAction(c) {
     const openP = document.querySelector('.cloudPanel.open, .modal.open');
     if (c === 'red') { if (openP && openP.id === 'settingsPanel') openP.classList.remove('open'); else { if (openP) openP.classList.remove('open'); $('nxSettings').click(); } return; }
     if (openP) openP.classList.remove('open');
     if (c === 'green') { $('tabGuide').click(); $('nowBtn').click(); }
     if (c === 'yellow') $('tabLibrary').click();
     if (c === 'blue') $('tabGuide').click();
-  }, true);
+  }
+  document.addEventListener('keydown', e => { const c = COLOUR[e.key] || COLOUR[e.keyCode]; if (!c) return; e.preventDefault(); goFull(); colourAction(c); }, true);
+  document.querySelectorAll('#nxKeys span').forEach(s => s.addEventListener('click', e => { e.stopPropagation(); colourAction(s.dataset.c); }));
 
   // ── Auto-update: if a newer version is published, reload past the browser's cached copy ──
   async function checkForUpdate() {
