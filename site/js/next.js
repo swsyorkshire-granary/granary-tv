@@ -515,12 +515,12 @@
       if (!error && data && data.user) currentUser = data.user;
     } catch (e) { console.warn('Granary TV: could not save channels to your account –', e.message || e); }
   }
-  NX.version = '2.0.62';
+  NX.version = '2.0.63';
   // ── Full screen in a TV's own browser (LG webOS etc.): hides the address bar ──
   const isWebOS = /web0s|webos|netcast/i.test(navigator.userAgent);
   const fsEl = () => document.fullscreenElement || document.webkitFullscreenElement;
   function goFull() {
-    if (inApp() || fsEl()) return;
+    if (inApp() || lgApp() || fsEl()) return;
     const el = document.documentElement, fn = el.requestFullscreen || el.webkitRequestFullscreen;
     try { const p = fn && fn.call(el); if (p && p.catch) p.catch(() => {}); } catch (e) {}
   }
@@ -530,7 +530,8 @@
   document.addEventListener('click', fullOnPress, true); document.addEventListener('keydown', fullOnPress, true);
   NX.goFull = goFull;
   // LG's browser bar sits over the top of the page: leave room for it unless we're full screen
-  const barRoom = () => document.documentElement.classList.toggle('nxBarRoom', isWebOS && !inApp() && !fsEl());
+  const lgApp = () => !!window.GRANARY_LG_APP || /[?&]app=lg\b/.test(location.search);
+  const barRoom = () => document.documentElement.classList.toggle('nxBarRoom', isWebOS && !inApp() && !lgApp() && !fsEl());
   barRoom(); document.addEventListener('fullscreenchange', barRoom); document.addEventListener('webkitfullscreenchange', barRoom);
 
   // Show the colour-button key on TVs whose remotes have them (not the Fire Stick)
@@ -561,7 +562,8 @@
   setTimeout(checkForUpdate, 1500);
   document.addEventListener('visibilitychange', () => { if (!document.hidden) checkForUpdate(); });
   setInterval(checkForUpdate, 30 * 60000);
-  function chStatus(t) { NX.chStatus = t + ' · ' + new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }); const el = $('chSync'); if (el) el.textContent = 'Version ' + NX.version + ' · Channels: ' + NX.chStatus; }
+  function chStatus(t) {
+    if (lgApp() && !NX.lunaNote) NX.lunaNote = ' · LG app' + (window.PalmServiceBridge ? '' : ' (no system access)'); NX.chStatus = t + ' · ' + new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }); const el = $('chSync'); if (el) el.textContent = 'Version ' + NX.version + (NX.lunaNote || '') + ' · Channels: ' + NX.chStatus; }
   async function syncChannelsFromAccount(force) {
     if (!currentUser) { chStatus('not signed in, so not synced'); return; }
     // the saved sign-in can hold old account details: ask for the latest before comparing
@@ -741,7 +743,7 @@
     document.querySelectorAll('.jump').forEach(b => b.onclick = () => { const hr = b.dataset.h === 'eve' ? defaultStart() : +b.dataset.h; setWindow(hr); NX.sel = null; render(); });
     $('nowBtn').onclick = () => { const d = new Date(); selected = 0; setWindow(Math.floor((d.getHours() * 60 + d.getMinutes()) / 30) / 2); NX.sel = null; renderDays(); render(); };
     $('pairStart').onclick = startPair;
-    if (!inApp() && (NX.tv || isWebOS) && (document.documentElement.requestFullscreen || document.documentElement.webkitRequestFullscreen)) {
+    if (!inApp() && !lgApp() && (NX.tv || isWebOS) && (document.documentElement.requestFullscreen || document.documentElement.webkitRequestFullscreen)) {
       const fb = $('fullBtn'); fb.hidden = false;
       const label = () => { fb.textContent = fullAuto ? 'Full screen: on (browser bar hidden)' : 'Full screen: off'; };
       label();

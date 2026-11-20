@@ -1,0 +1,31 @@
+name: Build LG TV app
+on:
+  push:
+    branches: [main]
+    paths: ['lg/**', '.github/workflows/lg.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '20' }
+      - name: Package with LG's webOS tools
+        run: |
+          npm install -g @webos-tools/cli 2>&1 | tail -3
+          mkdir -p out && ares-package lg -o out 2>&1 | tee lg-build.log
+          ls -la out
+      - name: Save the app back to the repo
+        run: |
+          mkdir -p build-output
+          f=$(ls out/*.ipk 2>/dev/null | head -1)
+          if [ -n "$f" ]; then cp "$f" site/granary-lg.ipk; echo "OK $(date -u)" > build-output/lg-status.txt; else echo "FAILED $(date -u)" > build-output/lg-status.txt; fi
+          cp lg-build.log build-output/lg-build.log || true
+          git config user.name "granary-build-bot"
+          git config user.email "granary-build-bot@users.noreply.github.com"
+          git add -A site/granary-lg.ipk build-output 2>/dev/null || git add -A build-output
+          git commit -m "LG app build: $(cat build-output/lg-status.txt) [skip ci]" || exit 0
+          git pull --rebase -q && git push

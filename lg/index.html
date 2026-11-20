@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>Granary TV</title>
+<style>html,body{margin:0;height:100%;background:#f6f5f2;font:600 32px system-ui,sans-serif;color:#222;display:flex;align-items:center;justify-content:center}</style></head>
+<body><div id="m">Opening Granary TV…</div>
+<script>
+// The LG app is a thin launcher: it opens the live Granary TV page full screen inside the app,
+// so updates to the website reach the TV without reinstalling.
+var SITE = 'https://swsyorkshire-granary.github.io/granary-tv/tv.html?app=lg';
+function go() { location.replace(SITE); }
+if (navigator.onLine === false) {
+  document.getElementById('m').textContent = 'Waiting for the internet…';
+  window.addEventListener('online', go);
+  setInterval(function () { if (navigator.onLine !== false) go(); }, 5000);
+} else go();
+</script></body></html>

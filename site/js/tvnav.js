@@ -155,7 +155,7 @@
     el.querySelector('.arSmall').textContent = 'Opening ' + service + '…';
     el.querySelector('.arTitle').textContent = title ? 'Search for: ' + title : 'Search for the programme there';
     el.querySelector('.arSteps').textContent = LG
-      ? 'If the TV asks to open the ' + service + ' app, choose Yes. Then go to Search in the app and type the name above. (The LG apps can\'t be sent straight to a programme.)'
+      ? (LGAPP ? 'The ' + service + ' app will open' : 'If the TV asks to open the ' + service + ' app, choose Yes') + '. Then go to Search in the app and type the name above. (The LG apps can\'t be sent straight to a programme.)'
       : service === 'BBC iPlayer' || service === 'ITVX'
       ? 'Choose your profile if asked, then go to Search. ' + service + ' on Fire TV won\'t open a programme directly.'
       : 'Go to Search in ' + service + ' and type the name above.';
@@ -172,6 +172,26 @@
   // so show what to search for, then let the TV offer its app.
   const LG = !window.GranaryApp && /web0s|webos|netcast/i.test(navigator.userAgent);
   let lgPass = false;
+  // Running inside the Granary LG app (opened from lg/index.html with ?app=lg)?
+  let LGAPP = /[?&]app=lg\b/.test(location.search);
+  try { if (LGAPP) localStorage.setItem('granary-lg-app', '1'); else LGAPP = /web0s|webos/i.test(navigator.userAgent) && localStorage.getItem('granary-lg-app') === '1' && !!window.PalmSystem; } catch (err) {}
+  window.GRANARY_LG_APP = LGAPP;
+  if (LGAPP) document.documentElement.classList.add('lgApp');
+  // Ask webOS to open something (another app, or a link the TV knows an app for)
+  function luna(uri, params) {
+    return new Promise(res => {
+      if (!window.PalmServiceBridge) return res({ returnValue: false, errorText: 'no system access' });
+      try { const b = new PalmServiceBridge(); b.onservicecallback = m => { let r = {}; try { r = JSON.parse(m); } catch (err) {} res(r); }; b.call(uri, JSON.stringify(params)); window.__lunaKeep = b; }
+      catch (err) { res({ returnValue: false, errorText: String(err) }); }
+      setTimeout(() => res({ returnValue: false, errorText: 'no reply' }), 4000);
+    });
+  }
+  window.granaryLuna = luna;
+  async function lgOpen(url) {
+    let r = await luna('luna://com.webos.applicationManager/open', { target: url });
+    if (!r.returnValue) r = await luna('luna://com.webos.applicationManager/launch', { id: 'com.webos.app.browser', params: { target: url } });
+    if (!r.returnValue) { const t = document.getElementById('toast'); if (t) { t.textContent = 'Couldn’t open that from the app (' + (r.errorText || 'unknown') + ')'; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 4000); } }
+  }
   document.addEventListener('click', e => {
     if (!LG || lgPass) return;
     const a = e.target.closest && e.target.closest('a.primaryProvider, a.providerLookup, a.watchLookup, a.providerExtra, a.watchLive');
@@ -183,7 +203,7 @@
     const svc = (SERVICE_NAMES.find(([re]) => re.test(host)) || [null, ''])[1] || (/\bChannel 4\b/.test(label) ? 'Channel 4' : '');
     if (!svc) return;                                       // not a streaming service link: open normally
     e.preventDefault(); e.stopPropagation();
-    showReminder(svc, t, () => { lgPass = true; try { a.click(); } finally { lgPass = false; } });
+    showReminder(svc, t, LGAPP ? () => lgOpen(a.href) : () => { lgPass = true; try { a.click(); } finally { lgPass = false; } });
   }, true);
   document.addEventListener('click', e => {
     const a = e.target.closest && e.target.closest('a.primaryProvider, a.providerLookup, a.watchLookup, a.providerExtra');
@@ -210,5 +230,13 @@
     if (closeBtn) closeBtn.click(); else layer.classList.remove('open');
     return true;
   };
-  document.addEventListener('keydown', e => { if ((e.key === 'Escape' || e.key === 'GoBack' || e.key === 'BrowserBack') && window.granaryBack()) e.preventDefault(); });
+  let backAt = 0;
+  document.addEventListener('keydown', e => {
+    if (!(e.key === 'Escape' || e.key === 'GoBack' || e.key === 'BrowserBack' || e.keyCode === 461)) return;
+    if (window.granaryBack()) { e.preventDefault(); return; }
+    if (!LGAPP) return;
+    e.preventDefault();
+    if (Date.now() - backAt < 2500) { try { window.PalmSystem && PalmSystem.platformBack ? PalmSystem.platformBack() : window.close(); } catch (err) { window.close(); } return; }
+    backAt = Date.now(); const t = document.getElementById('toast'); if (t) { t.textContent = 'Press Back again to leave Granary TV'; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 2500); }
+  });
 })();
