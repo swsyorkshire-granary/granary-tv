@@ -515,7 +515,21 @@
       if (!error && data && data.user) currentUser = data.user;
     } catch (e) { console.warn('Granary TV: could not save channels to your account –', e.message || e); }
   }
-  NX.version = '2.0.57';
+  NX.version = '2.0.58';
+  // ── Full screen in a TV's own browser (LG webOS etc.): hides the address bar ──
+  const isWebOS = /web0s|webos|netcast/i.test(navigator.userAgent);
+  const fsEl = () => document.fullscreenElement || document.webkitFullscreenElement;
+  function goFull() {
+    if (inApp() || fsEl()) return;
+    const el = document.documentElement, fn = el.requestFullscreen || el.webkitRequestFullscreen;
+    try { const p = fn && fn.call(el); if (p && p.catch) p.catch(() => {}); } catch (e) {}
+  }
+  let fullAuto = isWebOS; try { const v = localStorage.getItem('granary-fullscreen'); if (v) fullAuto = v === 'on'; } catch (e) {}
+  // Browsers only allow full screen straight after a press, so do it on the first click / OK press (and again after Back leaves it)
+  const fullOnPress = e => { if (fullAuto && (e.type === 'click' || e.key === 'Enter')) goFull(); };
+  document.addEventListener('click', fullOnPress, true); document.addEventListener('keydown', fullOnPress, true);
+  NX.goFull = goFull;
+
   // ── Auto-update: if a newer version is published, reload past the browser's cached copy ──
   async function checkForUpdate() {
     try {
@@ -709,6 +723,13 @@
     document.querySelectorAll('.jump').forEach(b => b.onclick = () => { const hr = b.dataset.h === 'eve' ? defaultStart() : +b.dataset.h; setWindow(hr); NX.sel = null; render(); });
     $('nowBtn').onclick = () => { const d = new Date(); selected = 0; setWindow(Math.floor((d.getHours() * 60 + d.getMinutes()) / 30) / 2); NX.sel = null; renderDays(); render(); };
     $('pairStart').onclick = startPair;
+    if (!inApp() && (NX.tv || isWebOS) && (document.documentElement.requestFullscreen || document.documentElement.webkitRequestFullscreen)) {
+      const fb = $('fullBtn'); fb.hidden = false;
+      const label = () => { fb.textContent = fullAuto ? 'Full screen: on (browser bar hidden)' : 'Full screen: off'; };
+      label();
+      fb.onclick = () => { fullAuto = !fullAuto; try { localStorage.setItem('granary-fullscreen', fullAuto ? 'on' : 'off'); } catch (e) {}
+        label(); if (fullAuto) goFull(); else if (fsEl()) (document.exitFullscreen || document.webkitExitFullscreen).call(document); };
+    }
     $('pairTvBtn').onclick = () => { if (!currentUser) { $('settingsPanel').classList.remove('open'); openAuth(); return; } $('settingsPanel').classList.remove('open'); showPairManual(); $('pairApproveMsg').textContent = ''; $('pairPanel').classList.add('open'); if (NX.tv) setTimeout(() => $('pairInput').focus(), 50); };
     $('pairApprove').onclick = approvePair;
     $('pairAllow').onclick = () => { $('pairInput').value = $('pairAsk').dataset.code; approvePair().then(() => { if (/Done/.test($('pairApproveMsg').textContent)) $('pairAsk').hidden = true; }); };
