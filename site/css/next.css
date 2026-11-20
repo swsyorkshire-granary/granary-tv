@@ -218,3 +218,5 @@ html.tv .tile{font-size:1rem}
 
 #pairPanel{align-items:flex-start;padding-top:max(1rem,env(safe-area-inset-top))}#pairInput{font-size:1.6rem!important}
 .pairBox>button{display:block;width:100%;text-align:left;padding:.8rem 1rem;border-radius:.8rem;border:0;font-weight:600}
+.nxBarRoom body{padding-top:5.5rem}
+.nxTvOnly{display:none}.tv .nxTvOnly,html.nxBarRoom .nxTvOnly{display:block}
